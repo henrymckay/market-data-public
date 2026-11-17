@@ -86,3 +86,19 @@ class Sink(typing.Protocol):
     def replace(self, load: Load) -> None:
         """Replace the answered instruments' rows and the universe, as one unit."""
         ...
+
+
+class MetricsStore(typing.Protocol):
+    """Where the compute stage reads bars and writes metrics and its run."""
+
+    def append_run(self, run: transform.Run) -> None:
+        """Append one manifest row."""
+        ...
+
+    def read_bars(self) -> polars.DataFrame:
+        """Return every stored bar, with `BARS`' columns."""
+        ...
+
+    def replace_metrics(self, metrics: polars.DataFrame) -> None:
+        """Replace the whole `metrics` table."""
+        ...
