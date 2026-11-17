@@ -46,6 +46,12 @@ _SELECT_BARS = """
 select adj_close, close, day, high, low, ticker, volume from bars
 """
 
+_SELECT_SITE_BARS = """
+select
+    adj_close, close, day, dividend, high, low, open, split, ticker, volume
+from bars
+"""
+
 _SELECT_MISSING = """
 select ticker
 from tickers
@@ -86,6 +92,28 @@ class Store:
     def read_bars(self) -> polars.DataFrame:
         """Return every stored bar the metrics read."""
         return self.connection.execute(_SELECT_BARS).pl()
+
+    def read_metrics(self) -> polars.DataFrame:
+        """Return every stored metric, long."""
+        return self.connection.execute(
+            "select day, metric, ticker, value from metrics"
+        ).pl()
+
+    def read_rejected_counts(self) -> polars.DataFrame:
+        """Return `ticker` and `rejected`, the quarantined rows per instrument."""
+        return self.connection.execute(
+            "select ticker, count(*)::bigint as rejected from rejected group by ticker"
+        ).pl()
+
+    def read_site_bars(self) -> polars.DataFrame:
+        """Return every stored bar as the site's bars files hold it."""
+        return self.connection.execute(_SELECT_SITE_BARS).pl()
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the stored universe."""
+        return self.connection.execute(
+            "select active, asset_class, name, quote_type, sector, ticker from tickers"
+        ).pl()
 
     def read_missing(self) -> tuple[str, ...]:
         """Return the active instruments that have no bars, sorted."""
