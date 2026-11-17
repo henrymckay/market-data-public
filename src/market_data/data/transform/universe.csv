@@ -1,0 +1,90 @@
+ticker,name,asset_class,sector,quote_type,active
+^GSPC,S&P 500,index,US equity,price,true
+^NDX,Nasdaq 100,index,US equity,price,true
+^DJI,Dow Jones Industrial Average,index,US equity,price,true
+^RUT,Russell 2000,index,US equity,price,true
+^VIX,CBOE Volatility Index,index,Volatility,price,true
+^FTSE,FTSE 100,index,International equity,price,true
+^GDAXI,DAX,index,International equity,price,true
+^N225,Nikkei 225,index,International equity,price,true
+^IRX,US 13-week bill yield,rate,Treasury yield,yield,true
+^FVX,US 5-year yield,rate,Treasury yield,yield,true
+^TNX,US 10-year yield,rate,Treasury yield,yield,true
+^TYX,US 30-year yield,rate,Treasury yield,yield,true
+SPY,SPDR S&P 500 ETF,etf,US equity,price,true
+QQQ,Invesco QQQ Trust,etf,US equity,price,true
+IWM,iShares Russell 2000 ETF,etf,US equity,price,true
+EFA,iShares MSCI EAFE ETF,etf,International equity,price,true
+EEM,iShares MSCI Emerging Markets ETF,etf,International equity,price,true
+TLT,iShares 20+ Year Treasury Bond ETF,etf,Bonds,price,true
+IEF,iShares 7-10 Year Treasury Bond ETF,etf,Bonds,price,true
+HYG,iShares High Yield Corporate Bond ETF,etf,Bonds,price,true
+LQD,iShares Investment Grade Corporate Bond ETF,etf,Bonds,price,true
+GLD,SPDR Gold Shares,etf,Commodities,price,true
+SLV,iShares Silver Trust,etf,Commodities,price,true
+XLK,Technology Select Sector SPDR,etf,Technology,price,true
+XLF,Financial Select Sector SPDR,etf,Financials,price,true
+XLV,Health Care Select Sector SPDR,etf,Health Care,price,true
+XLE,Energy Select Sector SPDR,etf,Energy,price,true
+XLY,Consumer Discretionary Select Sector SPDR,etf,Consumer Discretionary,price,true
+XLP,Consumer Staples Select Sector SPDR,etf,Consumer Staples,price,true
+XLI,Industrial Select Sector SPDR,etf,Industrials,price,true
+XLB,Materials Select Sector SPDR,etf,Materials,price,true
+XLU,Utilities Select Sector SPDR,etf,Utilities,price,true
+XLRE,Real Estate Select Sector SPDR,etf,Real Estate,price,true
+XLC,Communication Services Select Sector SPDR,etf,Communication Services,price,true
+AAPL,Apple,stock,Technology,price,true
+MSFT,Microsoft,stock,Technology,price,true
+NVDA,NVIDIA,stock,Technology,price,true
+AVGO,Broadcom,stock,Technology,price,true
+ORCL,Oracle,stock,Technology,price,true
+ADBE,Adobe,stock,Technology,price,true
+CRM,Salesforce,stock,Technology,price,true
+AMD,Advanced Micro Devices,stock,Technology,price,true
+INTC,Intel,stock,Technology,price,true
+CSCO,Cisco,stock,Technology,price,true
+AMZN,Amazon,stock,Consumer Discretionary,price,true
+TSLA,Tesla,stock,Consumer Discretionary,price,true
+HD,Home Depot,stock,Consumer Discretionary,price,true
+MCD,McDonald's,stock,Consumer Discretionary,price,true
+NKE,Nike,stock,Consumer Discretionary,price,true
+GOOGL,Alphabet,stock,Communication Services,price,true
+META,Meta Platforms,stock,Communication Services,price,true
+NFLX,Netflix,stock,Communication Services,price,true
+DIS,Walt Disney,stock,Communication Services,price,true
+JPM,JPMorgan Chase,stock,Financials,price,true
+BAC,Bank of America,stock,Financials,price,true
+V,Visa,stock,Financials,price,true
+MA,Mastercard,stock,Financials,price,true
+GS,Goldman Sachs,stock,Financials,price,true
+LLY,Eli Lilly,stock,Health Care,price,true
+UNH,UnitedHealth,stock,Health Care,price,true
+JNJ,Johnson & Johnson,stock,Health Care,price,true
+PFE,Pfizer,stock,Health Care,price,true
+MRK,Merck,stock,Health Care,price,true
+WMT,Walmart,stock,Consumer Staples,price,true
+PG,Procter & Gamble,stock,Consumer Staples,price,true
+KO,Coca-Cola,stock,Consumer Staples,price,true
+PEP,PepsiCo,stock,Consumer Staples,price,true
+COST,Costco,stock,Consumer Staples,price,true
+XOM,Exxon Mobil,stock,Energy,price,true
+CVX,Chevron,stock,Energy,price,true
+CAT,Caterpillar,stock,Industrials,price,true
+BA,Boeing,stock,Industrials,price,true
+GE,GE Aerospace,stock,Industrials,price,true
+UPS,United Parcel Service,stock,Industrials,price,true
+EURUSD=X,Euro to US dollar,fx,Major pair,price,true
+GBPUSD=X,Pound to US dollar,fx,Major pair,price,true
+USDJPY=X,US dollar to yen,fx,Major pair,price,true
+AUDUSD=X,Australian dollar to US dollar,fx,Major pair,price,true
+USDCHF=X,US dollar to Swiss franc,fx,Major pair,price,true
+DX-Y.NYB,US dollar index,fx,Dollar index,price,true
+GC=F,Gold futures,commodity,Metals,price,true
+SI=F,Silver futures,commodity,Metals,price,true
+CL=F,Crude oil futures,commodity,Energy,price,true
+NG=F,Natural gas futures,commodity,Energy,price,true
+HG=F,Copper futures,commodity,Metals,price,true
+BTC-USD,Bitcoin,crypto,Crypto,price,true
+ETH-USD,Ethereum,crypto,Crypto,price,true
+SOL-USD,Solana,crypto,Crypto,price,true
+XRP-USD,XRP,crypto,Crypto,price,true
