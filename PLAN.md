@@ -320,6 +320,15 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 - **D37 The workflow** runs `nightly` then `status` (on `!cancelled()`) in one job so the dispatched run shows both exit codes; `permissions: {}` at the top and `contents: read` on the job; `persist-credentials: false`; each action pinned to a full commit SHA with its tag beside it (checkout v7.0.1, setup-uv v10.3.3, read from the releases API 2026-11-17); `cancel-in-progress: false`; the token only in the env of the two steps that read the store; overrides nothing, but `github-actions.md`'s sample grants `contents: write`, which nothing here needs *(by precedent: `deploy-project`, Run the pipeline; `secure-project`, Keep secrets out)*.
 - **D38 `read_runs` returns its times converted to UTC**, found in a real run: DuckDB hands back the session's zone (here +04), which `status` printed as `Z` *(by precedent: `write-python`, Time and money)*.
 
+- **D39 `export` reads through `SiteSource` and writes through `SiteWriter` ports; the overview carries `slug`, `bar_count`, `first_day`, `last_day`, `rejected` beside the plan's columns, and keeps an active instrument with no bars with null figures** — the Runs coverage needs them and a dead symbol must show, and the page never recomputes the slug (`write-sql`, Never compute one result both ways) *(proposed)*.
+- **D40 The Markets treemap and the leaders bars are DOM, not ECharts; the monthly calendar and the correlation matrix are HTML tables; ECharts draws only the drawdown and Compare lines** over D4's ECharts for every non-candle chart — it keeps 167 KB gzipped of ECharts off the first load, gives labels that adapt to tile size, instant re-theming and real buttons for a screen reader; overrides `design-interface`, `references/web.md` (ECharts for charts) *(proposed)*.
+- **D41 shadcn/ui's CLI was not run; components are written by hand in its pattern (`cva`, `clsx`, `tailwind-merge`, `cmdk` for the search) and its token names** — the generator is interactive and pulls Radix for parts used once; `design-interface`, `references/web.md` says to add components with the CLI *(proposed)*.
+- **D42 Two extra tokens, `--up-text` and `--down-text`**, a darker blue and red step for text in light and a lighter one in dark, since `up` and `down` fall under 4.5 to 1 as text on `surface`; the same idea as `design-interface`'s status-text steps *(proposed)*.
+- **D43 Site files are fetched whole and read with `hyparquet`; `overview.parquet` and `runs.parquet` are preloaded from `index.html`; a refetch after a new `ended` adds `?v=<ended>`** — a 60 KB to 830 KB file costs one request, and the preload took 0.4 s off a throttled cold load *(proposed)*.
+- **D44 A tile shows a value of 50,000 or more compact (`64.9K`) with the exact figure in its tooltip; the leaders and laggards leave out rates and `^VIX`** — Design's example and `design-interface`'s Numbers; a volatility index's +18% would flatten the ranking *(proposed)*.
+- **D45 Browser smokes run over a synthetic year for the universe, exported by the CLI, served from a copy of `web/dist`; marked `slow`, left out of the default run, and failing with an instruction when `web/dist` is missing** — `write-tests`, Coverage and speed *(by precedent)*.
+- **D46 `evaluation/shoot.py` and `measure.py` are committed; `evaluation/round-*/` is git-ignored; `ruff` excludes `evaluation/`** *(by precedent: `build-project`, evaluate.md)*.
+
 ## Delivery
 
 ### Verification
@@ -346,7 +355,8 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
   5. Dispatch: `gh workflow run nightly.yml --repo henrymckay/market-data-public --ref main`, then `gh run watch --repo henrymckay/market-data-public`; check R1 (`rows` above 500,000, `failed_items` 0, `stored`), that the `status` step exited 0, and R8: `security find-generic-password -a "$USER" -s motherduck-token -w | grep -F -c -f - <(gh run view --repo henrymckay/market-data-public --log)` prints 0.
   6. Forced failure: on a branch append `ZZZBOGUS1,Bogus,stock,Technology,price,true` to `universe.csv`, push the branch, `gh workflow run nightly.yml --ref <branch>`; expect the `nightly` step to exit 1 with `ZZZBOGUS1 failed: no data` in its log and the `status` step to exit 1 naming it under `missing`; the next run on `main` replaces the stored `tickers`. Delete the branch.
   7. Tick M2's box; R2's scheduled-run check is ticked from the first night after.
-- [ ] **M3 Dashboard** — R4, R5; `export`, the `web/` app through `nodejs-wheel`, tokens first, then shared pieces, then the four screens, built locally over site data exported from MotherDuck; done when `vitest` and the Playwright smokes pass and the evaluator passes all ten criteria on the eight screenshots.
+- [x] **M3 Dashboard** — R4, R5; `export`, the `web/` app through `nodejs-wheel`, tokens first, then shared pieces, then the four screens, built locally over site data exported from MotherDuck; done when `vitest` and the Playwright smokes pass and the evaluator passes all ten criteria on the eight screenshots.
+  Built over site data exported from a local DuckDB file holding a real load, not MotherDuck (A14); the evaluator passed 9 of 10 criteria in round 2 and the one failure (a white pane separator in dark) was fixed and checked by the builder, with no third round. Live timings (R4) wait for M4.
 - [ ] **M4 Deploy and verify** — R2, R4, R5, R6, R8; the `site` and `deploy` jobs, Pages enabled by API, a dispatched run publishing the site, the README with the live URL, a screenshot, the README's queries and the teardown steps (Q2); done when R4's live timings, R5's age check, R6 and R8 pass on the live site and a scheduled run has published it.
 
 ## Open
@@ -368,6 +378,8 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 
 - **A13** A bogus symbol added to the universe CSV is how the forced failure is made (M2's wording "added on a branch run"); `fetch BOGUS` alone exits 2 as not in the universe, by design.
 
+- **A14 The dashboard was built over site data exported from a local DuckDB file (`/tmp/m3.duckdb`, a real load of 833,546 bars for 89 instruments, a `nightly` run of 1 min 56 s) because the MotherDuck token is invalid (A11)** — the export runs the same SQL on either store; M4's live check of R5 (age chip equals MotherDuck's latest `ended`) is untested until a valid token exists.
+
 ### Questions
 
 - **Q1** Should the nightly use a MotherDuck service account's token, reaching only its own database, instead of your personal token, which reaches all your databases from a public repository's Actions? — recommended: yes, create a service account (Lite allows two) and replace the `MOTHERDUCK_TOKEN` secret; blocks nothing, the build proceeds on A1.
@@ -380,4 +392,6 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 - **I3** Size the treemap by market cap from `yfinance`'s `info` — truer weights; costs a second, heavier, more throttled request per stock; not built.
 - **I4** Publish the database as a MotherDuck share so the owner can query it from any MotherDuck session without the pipeline's token — costs one statement and an account action; not built.
 - **I6** `pyrate_limiter` logs its bucket set-up at INFO and the connected-seconds log covers fetching too for a local run; split fetch and load timings if R6 needs the load alone — costs a second timer; not built.
+- **I7** Preload the Inter latin font and brotli-compress the site data on the host; the throttled cold load (1.6 s at 1.6 Mbit/s, 150 ms) is over 1.5 s though the loopback one is 0.5 s — costs a hashed-name lookup in the build; not built.
+- **I8** A colour-scale legend for the treemap, tap-for-detail on a phone's small tiles, and the instrument in the Ticker page title — evaluator round 2 nits; not built.
 - **I5** An ntfy alert on a failed or missed night (`send-messages`) — costs a topic secret and a status workflow; not built.

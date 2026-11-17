@@ -102,3 +102,48 @@ class MetricsStore(typing.Protocol):
     def replace_metrics(self, metrics: polars.DataFrame) -> None:
         """Replace the whole `metrics` table."""
         ...
+
+
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
+class Written:
+    """One site file written: its path under the output folder, rows and bytes."""
+
+    bytes: int
+    path: str
+    rows: int
+
+
+class SiteSource(typing.Protocol):
+    """Where the export reads the stored tables."""
+
+    def read_metrics(self) -> polars.DataFrame:
+        """Return every metric, long."""
+        ...
+
+    def read_rejected_counts(self) -> polars.DataFrame:
+        """Return `ticker` and `rejected`, the quarantined rows per instrument."""
+        ...
+
+    def read_runs(self) -> polars.DataFrame:
+        """Return every manifest row."""
+        ...
+
+    def read_site_bars(self) -> polars.DataFrame:
+        """Return every stored bar with its dividend and split."""
+        ...
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the stored universe."""
+        ...
+
+
+class SiteWriter(typing.Protocol):
+    """Where the export puts the site data."""
+
+    def write_json(self, name: str, document: object) -> Written:
+        """Write a JSON document under the name."""
+        ...
+
+    def write_parquet(self, name: str, frame: polars.DataFrame) -> Written:
+        """Write a frame as snappy Parquet under the name."""
+        ...
