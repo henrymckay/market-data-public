@@ -70,6 +70,7 @@ function Headlines({ items, period, open }: { items: Instrument[]; period: Windo
             className={span}
             label={label}
             value={lastValue(item)}
+            valueTitle={item.metrics.last_close == null ? undefined : item.quoteType === "yield" ? formatYield(item.metrics.last_close) : formatPrice(item.metrics.last_close, item.assetClass)}
             delta={<Delta value={current?.value ?? null} text={current?.text ?? null} />}
             context={period === "1d" ? `Close on ${item.lastDay === null ? "–" : formatDay(item.lastDay)}` : <>1D <Delta value={day?.value ?? null} text={day?.text ?? null} /></>}
             spark={item.spark === null ? undefined : <Spark values={item.spark} label={`${label}, last 63 closes`} width={72} />}
@@ -161,7 +162,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
   };
 
   return (
-    <div className="scroll-thin max-h-[640px] overflow-auto rounded-md border">
+    <div className="scroll-thin max-h-[614px] overflow-auto rounded-md border">
       <table className="w-full min-w-[780px] sm:min-w-[860px] border-separate border-spacing-0 text-sm">
         <thead>
           <tr>

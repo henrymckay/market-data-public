@@ -21,6 +21,11 @@ interface TreemapProps {
   onOpen: (ticker: string) => void;
 }
 
+const SHORT: Record<string, string> = {
+  "Communication Services": "Communication",
+  "Consumer Discretionary": "Discretionary",
+  "Consumer Staples": "Staples",
+};
 const GAP = 2;
 const HEADER = 18;
 
@@ -50,15 +55,15 @@ export function Treemap({ leaves, bound, tokens: t, periodWords, onOpen }: Treem
   }, [leaves, size]);
 
   return (
-    <div ref={box} className="relative h-[320px] w-full overflow-hidden sm:h-[460px]" onMouseLeave={() => setTip(null)}>
+    <div ref={box} role="group" aria-label={`Stocks by sector, coloured by return over ${periodWords}; each tile opens its instrument`} className="relative h-[320px] w-full overflow-hidden sm:h-[460px]" onMouseLeave={() => setTip(null)}>
       {layout.map((sector) => (
         <div key={sector.name}>
           <div className="absolute truncate pr-1 text-xs font-medium text-text-2" style={{ height: HEADER, left: sector.x + GAP / 2, lineHeight: `${HEADER}px`, top: sector.y, width: Math.max(0, sector.w - GAP) }}>
-            {sector.w > 56 ? sector.name : ""}
+            {sector.w > 150 ? sector.name : sector.w > 56 ? (SHORT[sector.name] ?? sector.name) : ""}
           </div>
           {sector.tiles.map((tile) => {
             const fill = diverging(tile.ret, bound, t);
-            const ink = inkOn(fill, "#ffffff", "#0b0b0b");
+            const ink = inkOn(fill, "#ffffff", "#000000");
             const w = tile.w - GAP;
             const h = tile.h - GAP;
             return (

@@ -61,7 +61,7 @@ export default function Runs({ data }: { data: Data; now: number }) {
           </div>
 
           <Card title="Recent runs" subtitle={`The last ${runs.length} stages, newest first; times in UTC`}>
-            <div className="scroll-thin max-h-[420px] overflow-auto rounded-md border">
+            <div className="scroll-thin max-h-[398px] overflow-auto rounded-md border">
               <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr>
@@ -97,7 +97,7 @@ export default function Runs({ data }: { data: Data; now: number }) {
         {coverage === null ? (
           data.overview.status === "error" ? <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list. Other screens still work; tonight&rsquo;s run rewrites the file.</ErrorNote> : <Block height={320} />
         ) : (
-          <div className="scroll-thin max-h-[480px] overflow-auto rounded-md border">
+          <div className="scroll-thin max-h-[470px] overflow-auto rounded-md border">
             <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
               <thead>
                 <tr>

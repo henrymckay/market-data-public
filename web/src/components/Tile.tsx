@@ -8,21 +8,22 @@ interface TileProps {
   context?: ReactNode;
   delta?: ReactNode;
   spark?: ReactNode;
+  valueTitle?: string;
   onClick?: () => void;
   className?: string;
 }
 
 /** The answer: a muted label, the value, then a muted line of context. */
-export function Tile({ label, value, context, delta, spark, onClick, className }: TileProps) {
+export function Tile({ label, value, valueTitle, context, delta, spark, onClick, className }: TileProps) {
   const body = (
     <>
       <div className="truncate text-sm text-muted-foreground">{label}</div>
-      <div className="mt-0.5 text-2xl font-semibold leading-8 num">{value}</div>
+      <div className="mt-0.5 text-2xl font-semibold leading-8 num" title={valueTitle}>{value}</div>
       <div className="mt-1 flex items-end justify-between gap-2 text-sm">
         {delta !== undefined && <div className="font-medium">{delta}</div>}
         {spark}
       </div>
-      {context !== undefined && <div className="mt-0.5 truncate text-sm text-muted-foreground">{context}</div>}
+      {context !== undefined && <div className="mt-0.5 text-sm text-muted-foreground">{context}</div>}
     </>
   );
   const shell = cn("min-w-0 rounded-lg border bg-card p-3 text-left sm:p-4", className);

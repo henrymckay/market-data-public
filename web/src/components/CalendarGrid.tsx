@@ -12,14 +12,14 @@ export function CalendarGrid({ rows, tokens: t, label }: { rows: readonly Calend
     if (value === null) return <td key={key} className="h-6 border-t px-0" />;
     const fill = diverging(value, bound, t);
     return (
-      <td key={key} className="h-6 border-t px-0 text-center text-xs num" style={{ background: fill, color: inkOn(fill, "#ffffff", "#0b0b0b") }}>
-        {formatFixed(value * 100, 1)}
+      <td key={key} className="h-6 border-t px-0 text-center text-xs num" style={{ background: fill, color: inkOn(fill, "#ffffff", "#000000") }}>
+        {Math.abs(value) < 0.0005 ? "0.0" : formatFixed(value * 100, 1)}
       </td>
     );
   };
   return (
-    <div className="scroll-thin h-[300px] overflow-auto rounded-md border" role="region" aria-label={label} tabIndex={0}>
-      <table className="w-full min-w-[520px] border-separate border-spacing-0 text-xs">
+    <div className="scroll-thin h-[294px] overflow-auto rounded-md border" role="region" aria-label={label} tabIndex={0}>
+      <table aria-label={label} className="w-full min-w-[520px] border-separate border-spacing-0 text-xs">
         <thead>
           <tr>
             <th scope="col" className="sticky left-0 top-0 z-20 h-7 w-12 bg-muted px-2 text-left font-medium text-muted-foreground">Year</th>

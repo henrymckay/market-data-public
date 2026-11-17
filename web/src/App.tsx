@@ -5,7 +5,7 @@ import { SearchDialog } from "./components/SearchDialog";
 import { Block } from "./components/Status";
 import { judge } from "./lib/freshness";
 import { useReady } from "./lib/ready";
-import { MAX_COMPARE, useRoute } from "./lib/route";
+import { MAX_COMPARE, useRoute, VIEW_LABELS } from "./lib/route";
 import { useData, useNow } from "./lib/useData";
 import { Markets } from "./views/Markets";
 
@@ -30,6 +30,7 @@ export default function App() {
   const [searching, setSearching] = useState(false);
 
   useLayoutEffect(() => {
+    document.title = route.view === "markets" ? "Market data" : `${VIEW_LABELS[route.view]} · Market data`;
     document.documentElement.dataset.ready = "0";
     document.documentElement.dataset.view = route.view;
   }, [route.view]);
