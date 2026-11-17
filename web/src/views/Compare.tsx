@@ -247,7 +247,7 @@ export default function Compare({ data, route, update, onSearch }: Props) {
                             const value = a === b ? 1 : correlation(a.returns, b.returns);
                             const fill = diverging(value, 1, t);
                             return (
-                              <td key={b.ticker} className="h-9 rounded-[4px] text-center text-sm num" style={{ background: fill, color: inkOn(fill, "#ffffff", "#0b0b0b") }}>
+                              <td key={b.ticker} className="h-9 rounded-[4px] text-center text-sm num" style={{ background: fill, color: inkOn(fill, "#ffffff", "#000000") }}>
                                 {formatFixed(value, 2)}
                               </td>
                             );

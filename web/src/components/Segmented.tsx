@@ -19,7 +19,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, f
           aria-pressed={option === value}
           onClick={() => onChange(option)}
           className={cn(
-            "h-7 min-w-9 shrink-0 rounded-[5px] px-2.5 text-sm font-medium transition-colors",
+            "h-7 min-w-9 shrink-0 rounded-[5px] px-2.5 text-sm font-medium transition-colors focus-visible:outline-offset-[-2px]",
             option === value
               ? "bg-card text-foreground shadow-[0_0_0_1px_var(--border)]"
               : "text-muted-foreground hover:text-foreground",

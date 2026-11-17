@@ -11,6 +11,7 @@ import { Tile } from "../components/Tile";
 import { figure } from "../lib/figures";
 import {
   formatBasisPoints,
+  minus,
   formatDay,
   formatPercent,
   formatPrice,
@@ -38,6 +39,10 @@ const CLASS_NAME: Record<string, string> = {
   commodity: "Commodity future", crypto: "Cryptocurrency", etf: "Exchange-traded fund", fx: "Currency", index: "Index", rate: "Interest rate", stock: "Stock",
 };
 
+const UNIT: Record<string, string> = {
+  commodity: "US dollars", crypto: "US dollars", etf: "US dollars", fx: "units of the quote currency", index: "index points", rate: "percent", stock: "US dollars",
+};
+
 const drawdownOption = (series: Series, from: number, t: Tokens): Option => {
   const falls = drawdowns(series.adj, from);
   const points = series.days.slice(from).map((day, i) => [day, falls[i]!]);
@@ -52,7 +57,7 @@ const drawdownOption = (series: Series, from: number, t: Tokens): Option => {
       trigger: "axis",
     },
     xAxis: { axisLabel: { color: t.muted, hideOverlap: true }, axisLine: { lineStyle: { color: t.axis } }, axisTick: { show: false }, type: "time" },
-    yAxis: { axisLabel: { color: t.muted, formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, max: 0, splitLine: { lineStyle: { color: t.grid } }, type: "value" },
+    yAxis: { axisLabel: { color: t.muted, formatter: (v: number) => `${minus((v * 100).toFixed(0))}%` }, max: 0, splitLine: { lineStyle: { color: t.grid } }, type: "value" },
   };
 };
 
@@ -147,7 +152,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
         <Tile label={`Max drawdown, ${route.range}`} value={<Delta value={figures?.drawdown ?? null} text={figures === null ? null : formatPercent(figures.drawdown)} />} context="Peak to trough, adjusted" />
       </div>
 
-      <Card title={`${instrument?.name ?? route.ticker}, daily candles`} subtitle="Split-adjusted prices with volume below; markers show dividends and splits">
+      <Card title={`${instrument?.name ?? route.ticker}, daily candles`} subtitle={`Split-adjusted prices in ${UNIT[instrument?.assetClass ?? ""] ?? "quoted units"}, volume below; markers show dividends and splits`}>
         {instrument !== undefined && !hasBars ? (
           <EmptyNote>No bars stored for {instrument.ticker} yet.</EmptyNote>
         ) : barsFailed ? (

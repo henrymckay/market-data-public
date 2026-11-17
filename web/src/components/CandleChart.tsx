@@ -98,7 +98,7 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
     const instance = chart.current!;
     const body = candles.current!;
     body.setData(series.days.map((time, i) => ({ close: series.close[i]!, high: series.high[i]!, low: series.low[i]!, open: series.open[i]!, time })));
-    body.applyOptions({ priceFormat: { minMove: 1 / 10 ** digits, precision: digits, type: "price" } });
+    body.applyOptions({ priceFormat: { formatter: (value: number) => formatFixed(value, digits), minMove: 1 / 10 ** digits, type: "custom" } });
     const closes = Array.from(series.close);
     const average = (window: number) =>
       Array.from(movingAverage(closes, window), (value, i) => ({ time: series.days[i]!, value })).filter((point) => !Number.isNaN(point.value));
@@ -161,8 +161,8 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
   const tone = change > 0 ? "text-up-text" : change < 0 ? "text-down-text" : "text-muted-foreground";
 
   return (
-    <div className="relative" style={{ height }}>
-      <div className="pointer-events-none absolute left-2 top-1 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-md bg-card/85 px-1.5 py-0.5 text-sm num">
+    <div className="flex flex-col" style={{ height }}>
+      <div className="mb-1 flex min-h-[40px] flex-wrap content-start items-baseline gap-x-3 gap-y-0.5 text-sm num sm:min-h-5">
         <span className="font-medium">{formatDay(series.days[at]!)}</span>
         <span className="text-muted-foreground">O <span className="text-foreground">{price(series.open[at]!)}</span></span>
         <span className="text-muted-foreground">H <span className="text-foreground">{price(series.high[at]!)}</span></span>
@@ -171,7 +171,7 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
         <span className={tone}>{at === 0 ? "" : formatPercent(change)}</span>
         {withVolume && !Number.isNaN(series.volume[at]!) && <span className="text-muted-foreground">Vol <span className="text-foreground">{formatInteger(series.volume[at]!)}</span></span>}
       </div>
-      <div ref={element} role="img" aria-label={label} className="size-full" />
+      <div ref={element} role="img" aria-label={label} className="min-h-0 flex-1" />
     </div>
   );
 }
