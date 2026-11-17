@@ -1,0 +1,43 @@
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: taplo-format
+        name: taplo fmt
+        entry: uv run taplo fmt
+        language: system
+        types: [toml]
+      - id: taplo-lint
+        name: taplo lint
+        entry: uv run taplo lint
+        language: system
+        types: [toml]
+      - id: sqlfluff-format
+        name: sqlfluff format
+        entry: uv run sqlfluff format
+        language: system
+        types: [sql]
+      - id: sqlfluff-lint
+        name: sqlfluff lint
+        entry: uv run sqlfluff lint
+        language: system
+        types: [sql]
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.5.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
