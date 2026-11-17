@@ -37,6 +37,22 @@ insert into runs (
 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
+_INSERT_METRICS = """
+insert into metrics (day, metric, ticker, value)
+select day, metric, ticker, value from incoming_metrics
+"""
+
+_SELECT_BARS = """
+select adj_close, close, day, high, low, ticker, volume from bars
+"""
+
+_SELECT_MISSING = """
+select ticker
+from tickers
+where active and ticker not in (select distinct ticker from bars)
+order by ticker
+"""
+
 _INSERT_TICKERS = """
 insert into tickers (active, asset_class, name, quote_type, sector, ticker)
 select active, asset_class, name, quote_type, sector, ticker from incoming_tickers
@@ -66,6 +82,39 @@ class Store:
                 run.started,
             ],
         )
+
+    def read_bars(self) -> polars.DataFrame:
+        """Return every stored bar the metrics read."""
+        return self.connection.execute(_SELECT_BARS).pl()
+
+    def read_missing(self) -> tuple[str, ...]:
+        """Return the active instruments that have no bars, sorted."""
+        rows = self.connection.execute(_SELECT_MISSING).fetchall()
+        return tuple(row[0] for row in rows)
+
+    def read_runs(self) -> polars.DataFrame:
+        """Return every manifest row, its times in UTC whatever the session's zone."""
+        return (
+            self.connection.execute("select * from runs")
+            .pl()
+            .with_columns(polars.col("ended", "started").dt.convert_time_zone("UTC"))
+        )
+
+    def replace_metrics(self, metrics: polars.DataFrame) -> None:
+        """Replace the whole `metrics` table, as one unit.
+
+        :param metrics: The new rows, one per instrument and metric.
+        :raises StoreError: If the transaction fails; it is rolled back.
+        """
+        self.connection.register("incoming_metrics", metrics.to_arrow())
+        self.connection.execute("begin transaction")
+        try:
+            self.connection.execute("delete from metrics")
+            self.connection.execute(_INSERT_METRICS)
+            self.connection.execute("commit")
+        except duckdb.Error as failure:
+            self.connection.execute("rollback")
+            raise error.StoreError("The load failed and was rolled back") from failure
 
     def replace(self, load: port.Load) -> None:
         """Replace the answered instruments' bars and rejected rows, and the tickers.
