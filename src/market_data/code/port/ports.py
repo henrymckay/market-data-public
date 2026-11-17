@@ -102,15 +102,3 @@ class MetricsStore(typing.Protocol):
     def replace_metrics(self, metrics: polars.DataFrame) -> None:
         """Replace the whole `metrics` table."""
         ...
-
-
-class Journal(typing.Protocol):
-    """What `status` reads: the manifest and the instruments with no bars."""
-
-    def read_missing(self) -> tuple[str, ...]:
-        """Return the active instruments that have no bars, sorted."""
-        ...
-
-    def read_runs(self) -> polars.DataFrame:
-        """Return every manifest row."""
-        ...
