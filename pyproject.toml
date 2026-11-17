@@ -28,7 +28,9 @@ build-backend = "uv_build"
 dev = [
   "coverage>=7.17.3",
   "hypothesis>=6.170.15",
+  "nodejs-wheel>=24.19.0",
   "numpy>=2.5.5",
+  "playwright>=1.65.2",
   "pre-commit>=4.7.0",
   "pyright>=1.1.414",
   "pytest>=9.2.0",
@@ -39,6 +41,8 @@ dev = [
 ]
 
 [tool.ruff]
+extend-exclude = ["evaluation"]
+force-exclude = true
 line-length = 88
 src = ["src", "tests"]
 
@@ -59,9 +63,12 @@ typeCheckingMode = "standard"
 include = ["src", "tests"]
 
 [tool.pytest.ini_options]
-addopts = "--import-mode importlib --strict-config --strict-markers -p pytest_.given -m 'not real'"
+addopts = "--import-mode importlib --strict-config --strict-markers -p pytest_.given -m 'not real and not slow'"
 filterwarnings = ["error"]
-markers = ["real: runs against Yahoo, opt in with -m real"]
+markers = [
+  "real: runs against Yahoo, opt in with -m real",
+  "slow: drives the built dashboard in a browser, opt in with -m slow",
+]
 pythonpath = ["tests"]
 testpaths = ["tests/suite"]
 xfail_strict = true
