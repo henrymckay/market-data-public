@@ -1,0 +1,5 @@
+# Per-source constants for Yahoo Finance through yfinance (D6).
+attempts: 5 # tries per instrument, retries included
+max-wait: 60 # longest backoff between tries, in seconds
+requests-per-second: 1 # pace between requests
+tolerance: 0 # failed instruments a night may absorb and still be stored
