@@ -55,7 +55,7 @@ export default function Runs({ data }: { data: Data; now: number }) {
         <>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <Tile label="Last run" value={<StatusChip tone={verdict.tone} className="text-2xl font-semibold">{verdict.label}</StatusChip>} context={`${SOURCE_LABEL[last.source] ?? last.source}, ${formatMoment(last.ended)}`} />
-            <Tile label="Bars stored" value={lastYahoo === null ? "–" : formatInteger(lastYahoo.rows)} context={lastYahoo === null ? "No price run yet" : `Prices to ${formatDay(lastYahoo.day)}`} />
+            <Tile label="Rows in last price run" value={lastYahoo === null ? "–" : formatInteger(lastYahoo.rows)} context={lastYahoo === null ? "No price run yet" : `Bars stored, prices to ${formatDay(lastYahoo.day)}`} />
             <Tile label="Rows rejected" value={lastYahoo === null ? "–" : formatInteger(lastYahoo.rejected)} context="Quarantined by the last price run" />
             <Tile label="Failed instruments" value={lastYahoo === null ? "–" : formatInteger(lastYahoo.failedItems)} context="Answered nothing usable" />
           </div>
