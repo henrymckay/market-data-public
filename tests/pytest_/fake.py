@@ -28,3 +28,26 @@ def fetching(
 ) -> port.Fetch:
     """Return a fetch that answers with the given bars and failures."""
     return lambda _tickers: port.Fetched(bars=bars, failed=failed, requests=requests)
+
+
+@dataclasses.dataclass(slots=True)
+class Ledger:
+    """A metrics store that serves the bars it was given and keeps the results."""
+
+    bars: polars.DataFrame
+    metrics: list[polars.DataFrame] = dataclasses.field(
+        default_factory=list[polars.DataFrame]
+    )
+    runs: list[transform.Run] = dataclasses.field(default_factory=list[transform.Run])
+
+    def append_run(self, run: transform.Run) -> None:
+        """Keep the manifest row."""
+        self.runs.append(run)
+
+    def read_bars(self) -> polars.DataFrame:
+        """Return the bars."""
+        return self.bars
+
+    def replace_metrics(self, metrics: polars.DataFrame) -> None:
+        """Keep the metrics."""
+        self.metrics.append(metrics)

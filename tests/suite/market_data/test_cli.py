@@ -1,3 +1,4 @@
+import csv
 import logging
 
 import duckdb
@@ -142,3 +143,95 @@ def test_when_a_line_holds_the_secret_then_logging_replaces_it(capsys):
     logged = capsys.readouterr().err
     assert "s3cret-value" not in logged
     assert "connecting with [redacted] now" in logged
+
+
+def _rows(stdout):
+    return [line.split(",") for line in stdout.splitlines()]
+
+
+def _status(result):
+    rows = csv.reader(result.stdout.splitlines()[1:])
+    return dict(rows)
+
+
+def test_when_compute_after_fetch_then_a_metrics_row_is_shown_and_stored(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+
+    result = runner.invoke(cli.app, ["compute"])
+
+    lines = _rows(result.stdout)
+    assert result.exit_code == 1
+    assert lines[0] == _HEADER.split(",")
+    assert (lines[1][4], lines[1][8]) == ("partial", "metrics")
+    connection = duckdb.connect(database, read_only=True)
+    stored = connection.execute("select count(distinct ticker) from metrics").fetchone()
+    assert stored == (2,)
+
+
+def test_when_nightly_then_one_header_and_a_row_per_stage_and_exit_0(
+    runner, database, answering, real_universe
+):
+    result = runner.invoke(cli.app, ["nightly"])
+
+    lines = _rows(result.stdout)
+    assert result.exit_code == 0
+    assert [line[8] for line in lines[1:]] == ["yahoo", "metrics"]
+    assert [line[4] for line in lines[1:]] == ["stored", "stored"]
+    assert len(lines) == 3
+    connection = duckdb.connect(database, read_only=True)
+    stored = connection.execute("select count(distinct ticker) from metrics").fetchone()
+    assert stored == (real_universe.height,)
+
+
+def test_when_compute_finds_no_bars_then_exit_1_and_failed(runner, database):
+    result = runner.invoke(cli.app, ["compute"])
+
+    assert result.exit_code == 1
+    assert ",failed," in result.stdout
+
+
+def test_when_nightly_and_one_instrument_has_no_data_then_exit_1_naming_it(
+    runner, database, answering
+):
+    answering.add("MSFT")
+
+    result = runner.invoke(cli.app, ["nightly"])
+
+    assert result.exit_code == 1
+    assert "MSFT failed" in result.stderr
+    assert [line[4] for line in _rows(result.stdout)[1:]] == ["partial", "partial"]
+
+
+def test_when_status_after_a_good_nightly_then_exit_0_and_key_value_rows(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["nightly"])
+
+    result = runner.invoke(cli.app, ["status"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[0] == "key,value"
+    assert _status(result)["outcome"] == "stored"
+    assert _status(result)["missing"] == ""
+    assert _status(result)["stale"] == "false"
+
+
+def test_when_status_after_a_partial_nightly_then_exit_1_and_the_missing_are_named(
+    runner, database, answering
+):
+    answering.add("MSFT")
+    runner.invoke(cli.app, ["nightly"])
+
+    result = runner.invoke(cli.app, ["status"])
+
+    assert result.exit_code == 1
+    assert _status(result)["missing"] == "MSFT"
+
+
+def test_when_status_on_an_empty_store_then_exit_1(runner, database):
+    result = runner.invoke(cli.app, ["status"])
+
+    assert result.exit_code == 1
+    assert _status(result)["outcome"] == "none"

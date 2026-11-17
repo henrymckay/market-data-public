@@ -60,8 +60,15 @@ def test_when_connect_then_migrations_create_the_tables_and_record_the_version(
 
     tables = {row[0] for row in connection.execute("show tables").fetchall()}
     version = connection.execute("select max(version) from schema_version").fetchone()
-    assert tables >= {"bars", "rejected", "runs", "schema_version", "tickers"}
-    assert version == (1,)
+    assert tables >= {
+        "bars",
+        "metrics",
+        "rejected",
+        "runs",
+        "schema_version",
+        "tickers",
+    }
+    assert version == (2,)
 
 
 def test_when_connect_twice_then_migrations_are_applied_once(database):
@@ -69,7 +76,7 @@ def test_when_connect_twice_then_migrations_are_applied_once(database):
 
     connection = motherduck.connect(database)
 
-    assert _count(connection, "schema_version") == 1
+    assert _count(connection, "schema_version") == 2
 
 
 def test_when_replace_twice_then_the_same_rows_remain(
@@ -156,3 +163,76 @@ def test_when_connect_cannot_authenticate_then_the_message_hides_the_failure(
     assert str(raised.value) == "MotherDuck refused the token"
     assert secret not in repr(raised.value)
     assert raised.value.__cause__ is None
+
+
+def test_when_replace_metrics_twice_then_the_table_holds_the_latest_rows(database):
+    store = motherduck.Store(motherduck.connect(database))
+    schema = {
+        "day": polars.Date,
+        "metric": polars.String,
+        "ticker": polars.String,
+        "value": polars.Float64,
+    }
+    first = polars.DataFrame(
+        {
+            "day": [_DAY] * 2,
+            "metric": ["a", "b"],
+            "ticker": ["AAA"] * 2,
+            "value": [1.0, 2.0],
+        },
+        schema=schema,
+    )
+    second = polars.DataFrame(
+        {"day": [_DAY], "metric": ["a"], "ticker": ["BBB"], "value": [3.0]},
+        schema=schema,
+    )
+
+    store.replace_metrics(first)
+    store.replace_metrics(second)
+
+    rows = store.connection.execute(
+        "select ticker, metric, value from metrics"
+    ).fetchall()
+    assert rows == [("BBB", "a", 3.0)]
+
+
+def test_when_read_bars_then_what_replace_stored_comes_back(
+    database, make_bars, small_universe
+):
+    store = motherduck.Store(motherduck.connect(database))
+    store.replace(_load(make_bars, small_universe, ["AAA", "BBB"]))
+
+    bars = store.read_bars()
+
+    assert bars.height == 2
+    assert bars.schema["day"] == polars.Date
+    assert set(bars.columns) == {
+        "adj_close",
+        "close",
+        "day",
+        "high",
+        "low",
+        "ticker",
+        "volume",
+    }
+
+
+def test_when_read_missing_then_active_instruments_without_bars_are_named(
+    database, make_bars, small_universe
+):
+    store = motherduck.Store(motherduck.connect(database))
+    store.replace(_load(make_bars, small_universe, ["AAA"]))
+
+    assert store.read_missing() == ("BBB", "^TNX")
+
+
+def test_when_read_runs_in_another_zone_then_times_come_back_in_utc(database):
+    store = motherduck.Store(motherduck.connect(database))
+    store.append_run(_run())
+    store.connection.execute("set timezone = 'Asia/Dubai'")
+
+    runs = store.read_runs()
+
+    assert runs.schema["ended"] == polars.Datetime("us", "UTC")
+    assert runs.row(0, named=True)["ended"].hour == _STARTED.hour
+    assert runs.row(0, named=True)["ended"].minute == _STARTED.minute + 2
