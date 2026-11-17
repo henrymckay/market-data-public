@@ -38,7 +38,7 @@ const hasVolume = (series: Series): boolean => series.volume.some((v) => v > 0);
 
 const layout = (t: Tokens) => ({
   grid: { horzLines: { color: t.grid }, vertLines: { color: t.grid } },
-  layout: { background: { color: t.surface, type: ColorType.Solid }, fontFamily: FONT, fontSize: 12, textColor: t.muted },
+  layout: { panes: { separatorColor: t.grid, separatorHoverColor: t.axis }, background: { color: t.surface, type: ColorType.Solid }, fontFamily: FONT, fontSize: 12, textColor: t.muted },
   rightPriceScale: { borderColor: t.grid },
   timeScale: { borderColor: t.grid },
 });
