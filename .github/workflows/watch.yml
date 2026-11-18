@@ -1,0 +1,44 @@
+name: watch
+# A night that never ran sends nothing of its own, so this run, a few hours
+# after the nightly's slot, reports it (PLAN.md, D93).
+on:
+  schedule:
+    - cron: "47 9 * * *"
+  workflow_dispatch:
+    inputs:
+      database:
+        description: Another store to judge, e.g. md:market_data_probe
+        type: string
+        default: md:market_data
+concurrency:
+  group: watch
+  cancel-in-progress: false
+permissions: {}
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - id: run
+        run: uv run --no-dev market-data-cli status --alert --log-level info
+        env:
+          MARKET_DATA_DATABASE: ${{ inputs.database || 'md:market_data' }}
+          motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      - name: Tell the owner a step before the command failed
+        if: ${{ failure() && steps.run.outcome == 'skipped' }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -sf --max-time 10 -H "Title: Market data: nightly job broke" -H "Priority: 5" -H "Tags: warning" \
+            -H "Click: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -d "A step before the command ran failed in the watch job; open the run." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null || true
