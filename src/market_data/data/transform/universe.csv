@@ -1,90 +1,680 @@
-ticker,name,asset_class,sector,quote_type,active
-^GSPC,S&P 500,index,US equity,price,true
-^NDX,Nasdaq 100,index,US equity,price,true
-^DJI,Dow Jones Industrial Average,index,US equity,price,true
-^RUT,Russell 2000,index,US equity,price,true
-^VIX,CBOE Volatility Index,index,Volatility,price,true
-^FTSE,FTSE 100,index,International equity,price,true
-^GDAXI,DAX,index,International equity,price,true
-^N225,Nikkei 225,index,International equity,price,true
-^IRX,US 13-week bill yield,rate,Treasury yield,yield,true
-^FVX,US 5-year yield,rate,Treasury yield,yield,true
-^TNX,US 10-year yield,rate,Treasury yield,yield,true
-^TYX,US 30-year yield,rate,Treasury yield,yield,true
-SPY,SPDR S&P 500 ETF,etf,US equity,price,true
-QQQ,Invesco QQQ Trust,etf,US equity,price,true
-IWM,iShares Russell 2000 ETF,etf,US equity,price,true
-EFA,iShares MSCI EAFE ETF,etf,International equity,price,true
-EEM,iShares MSCI Emerging Markets ETF,etf,International equity,price,true
-TLT,iShares 20+ Year Treasury Bond ETF,etf,Bonds,price,true
-IEF,iShares 7-10 Year Treasury Bond ETF,etf,Bonds,price,true
-HYG,iShares High Yield Corporate Bond ETF,etf,Bonds,price,true
-LQD,iShares Investment Grade Corporate Bond ETF,etf,Bonds,price,true
-GLD,SPDR Gold Shares,etf,Commodities,price,true
-SLV,iShares Silver Trust,etf,Commodities,price,true
-XLK,Technology Select Sector SPDR,etf,Technology,price,true
-XLF,Financial Select Sector SPDR,etf,Financials,price,true
-XLV,Health Care Select Sector SPDR,etf,Health Care,price,true
-XLE,Energy Select Sector SPDR,etf,Energy,price,true
-XLY,Consumer Discretionary Select Sector SPDR,etf,Consumer Discretionary,price,true
-XLP,Consumer Staples Select Sector SPDR,etf,Consumer Staples,price,true
-XLI,Industrial Select Sector SPDR,etf,Industrials,price,true
-XLB,Materials Select Sector SPDR,etf,Materials,price,true
-XLU,Utilities Select Sector SPDR,etf,Utilities,price,true
-XLRE,Real Estate Select Sector SPDR,etf,Real Estate,price,true
-XLC,Communication Services Select Sector SPDR,etf,Communication Services,price,true
-AAPL,Apple,stock,Technology,price,true
-MSFT,Microsoft,stock,Technology,price,true
-NVDA,NVIDIA,stock,Technology,price,true
-AVGO,Broadcom,stock,Technology,price,true
-ORCL,Oracle,stock,Technology,price,true
-ADBE,Adobe,stock,Technology,price,true
-CRM,Salesforce,stock,Technology,price,true
-AMD,Advanced Micro Devices,stock,Technology,price,true
-INTC,Intel,stock,Technology,price,true
-CSCO,Cisco,stock,Technology,price,true
-AMZN,Amazon,stock,Consumer Discretionary,price,true
-TSLA,Tesla,stock,Consumer Discretionary,price,true
-HD,Home Depot,stock,Consumer Discretionary,price,true
-MCD,McDonald's,stock,Consumer Discretionary,price,true
-NKE,Nike,stock,Consumer Discretionary,price,true
-GOOGL,Alphabet,stock,Communication Services,price,true
-META,Meta Platforms,stock,Communication Services,price,true
-NFLX,Netflix,stock,Communication Services,price,true
-DIS,Walt Disney,stock,Communication Services,price,true
-JPM,JPMorgan Chase,stock,Financials,price,true
-BAC,Bank of America,stock,Financials,price,true
-V,Visa,stock,Financials,price,true
-MA,Mastercard,stock,Financials,price,true
-GS,Goldman Sachs,stock,Financials,price,true
-LLY,Eli Lilly,stock,Health Care,price,true
-UNH,UnitedHealth,stock,Health Care,price,true
-JNJ,Johnson & Johnson,stock,Health Care,price,true
-PFE,Pfizer,stock,Health Care,price,true
-MRK,Merck,stock,Health Care,price,true
-WMT,Walmart,stock,Consumer Staples,price,true
-PG,Procter & Gamble,stock,Consumer Staples,price,true
-KO,Coca-Cola,stock,Consumer Staples,price,true
-PEP,PepsiCo,stock,Consumer Staples,price,true
-COST,Costco,stock,Consumer Staples,price,true
-XOM,Exxon Mobil,stock,Energy,price,true
-CVX,Chevron,stock,Energy,price,true
-CAT,Caterpillar,stock,Industrials,price,true
-BA,Boeing,stock,Industrials,price,true
-GE,GE Aerospace,stock,Industrials,price,true
-UPS,United Parcel Service,stock,Industrials,price,true
-EURUSD=X,Euro to US dollar,fx,Major pair,price,true
-GBPUSD=X,Pound to US dollar,fx,Major pair,price,true
-USDJPY=X,US dollar to yen,fx,Major pair,price,true
-AUDUSD=X,Australian dollar to US dollar,fx,Major pair,price,true
-USDCHF=X,US dollar to Swiss franc,fx,Major pair,price,true
-DX-Y.NYB,US dollar index,fx,Dollar index,price,true
-GC=F,Gold futures,commodity,Metals,price,true
-SI=F,Silver futures,commodity,Metals,price,true
-CL=F,Crude oil futures,commodity,Energy,price,true
-NG=F,Natural gas futures,commodity,Energy,price,true
-HG=F,Copper futures,commodity,Metals,price,true
-BTC-USD,Bitcoin,crypto,Crypto,price,true
-ETH-USD,Ethereum,crypto,Crypto,price,true
-SOL-USD,Solana,crypto,Crypto,price,true
-XRP-USD,XRP,crypto,Crypto,price,true
+ticker,name,asset_class,sector,quote_type,active,featured,source
+BZ=F,Brent crude futures,commodity,Energy,price,true,false,curated
+CC=F,Cocoa futures,commodity,Agriculture,price,true,false,curated
+CL=F,Crude oil futures,commodity,Energy,price,true,true,curated
+CT=F,Cotton futures,commodity,Agriculture,price,true,false,curated
+GC=F,Gold futures,commodity,Metals,price,true,true,curated
+HE=F,Lean hog futures,commodity,Livestock,price,true,false,curated
+HG=F,Copper futures,commodity,Metals,price,true,true,curated
+HO=F,Heating oil futures,commodity,Energy,price,true,false,curated
+KC=F,Coffee futures,commodity,Agriculture,price,true,false,curated
+LE=F,Live cattle futures,commodity,Livestock,price,true,false,curated
+NG=F,Natural gas futures,commodity,Energy,price,true,true,curated
+PA=F,Palladium futures,commodity,Metals,price,true,false,curated
+PL=F,Platinum futures,commodity,Metals,price,true,false,curated
+RB=F,Gasoline futures,commodity,Energy,price,true,false,curated
+SB=F,Sugar futures,commodity,Agriculture,price,true,false,curated
+SI=F,Silver futures,commodity,Metals,price,true,true,curated
+ZC=F,Corn futures,commodity,Agriculture,price,true,false,curated
+ZS=F,Soybean futures,commodity,Agriculture,price,true,false,curated
+ZW=F,Wheat futures,commodity,Agriculture,price,true,false,curated
+AAVE-USD,Aave,crypto,Crypto,price,true,false,curated
+ADA-USD,Cardano,crypto,Crypto,price,true,false,curated
+ATOM-USD,Cosmos,crypto,Crypto,price,true,false,curated
+AVAX-USD,Avalanche,crypto,Crypto,price,true,false,curated
+BCH-USD,Bitcoin Cash,crypto,Crypto,price,true,false,curated
+BNB-USD,BNB,crypto,Crypto,price,true,false,curated
+BTC-USD,Bitcoin,crypto,Crypto,price,true,true,curated
+DOGE-USD,Dogecoin,crypto,Crypto,price,true,false,curated
+DOT-USD,Polkadot,crypto,Crypto,price,true,false,curated
+ETC-USD,Ethereum Classic,crypto,Crypto,price,true,false,curated
+ETH-USD,Ethereum,crypto,Crypto,price,true,true,curated
+HBAR-USD,Hedera,crypto,Crypto,price,true,false,curated
+LINK-USD,Chainlink,crypto,Crypto,price,true,false,curated
+LTC-USD,Litecoin,crypto,Crypto,price,true,false,curated
+NEAR-USD,NEAR Protocol,crypto,Crypto,price,true,false,curated
+SHIB-USD,Shiba Inu,crypto,Crypto,price,true,false,curated
+SOL-USD,Solana,crypto,Crypto,price,true,true,curated
+TRX-USD,TRON,crypto,Crypto,price,true,false,curated
+XLM-USD,Stellar,crypto,Crypto,price,true,false,curated
+XRP-USD,XRP,crypto,Crypto,price,true,true,curated
+AGG,iShares Core U.S. Aggregate Bond ETF,etf,Bonds,price,true,false,curated
+ARKK,ARK Innovation ETF,etf,Industries and themes,price,true,false,curated
+BIL,SPDR Bloomberg 1-3 Month T-Bill ETF,etf,Bonds,price,true,false,curated
+BND,Vanguard Total Bond Market ETF,etf,Bonds,price,true,false,curated
+CPER,United States Copper Index Fund,etf,Commodities,price,true,false,curated
+DBA,Invesco DB Agriculture Fund,etf,Commodities,price,true,false,curated
+DBC,Invesco DB Commodity Index Tracking Fund,etf,Commodities,price,true,false,curated
+EEM,iShares MSCI Emerging Markets ETF,etf,International equity,price,true,true,curated
+EFA,iShares MSCI EAFE ETF,etf,International equity,price,true,true,curated
+EMB,iShares J.P. Morgan USD Emerging Markets Bond ETF,etf,Bonds,price,true,false,curated
+EWA,iShares MSCI Australia ETF,etf,Countries,price,true,false,curated
+EWC,iShares MSCI Canada ETF,etf,Countries,price,true,false,curated
+EWG,iShares MSCI Germany ETF,etf,Countries,price,true,false,curated
+EWI,iShares MSCI Italy ETF,etf,Countries,price,true,false,curated
+EWJ,iShares MSCI Japan ETF,etf,Countries,price,true,false,curated
+EWL,iShares MSCI Switzerland ETF,etf,Countries,price,true,false,curated
+EWP,iShares MSCI Spain ETF,etf,Countries,price,true,false,curated
+EWQ,iShares MSCI France ETF,etf,Countries,price,true,false,curated
+EWT,iShares MSCI Taiwan ETF,etf,Countries,price,true,false,curated
+EWU,iShares MSCI United Kingdom ETF,etf,Countries,price,true,false,curated
+EWW,iShares MSCI Mexico ETF,etf,Countries,price,true,false,curated
+EWY,iShares MSCI South Korea ETF,etf,Countries,price,true,false,curated
+EWZ,iShares MSCI Brazil ETF,etf,Countries,price,true,false,curated
+EZA,iShares MSCI South Africa ETF,etf,Countries,price,true,false,curated
+FXE,Invesco CurrencyShares Euro Trust,etf,Currencies,price,true,false,curated
+FXI,iShares China Large-Cap ETF,etf,Countries,price,true,false,curated
+FXY,Invesco CurrencyShares Japanese Yen Trust,etf,Currencies,price,true,false,curated
+GDX,VanEck Gold Miners ETF,etf,Industries and themes,price,true,false,curated
+GDXJ,VanEck Junior Gold Miners ETF,etf,Industries and themes,price,true,false,curated
+GLD,SPDR Gold Shares,etf,Commodities,price,true,true,curated
+HYG,iShares High Yield Corporate Bond ETF,etf,Bonds,price,true,true,curated
+IBB,iShares Biotechnology ETF,etf,Industries and themes,price,true,false,curated
+IBIT,iShares Bitcoin Trust ETF,etf,Crypto,price,true,false,curated
+ICLN,iShares Global Clean Energy ETF,etf,Industries and themes,price,true,false,curated
+IEF,iShares 7-10 Year Treasury Bond ETF,etf,Bonds,price,true,true,curated
+IGV,iShares Expanded Tech-Software ETF,etf,Industries and themes,price,true,false,curated
+IJR,iShares Core S&P Small-Cap ETF,etf,US equity,price,true,false,curated
+INDA,iShares MSCI India ETF,etf,Countries,price,true,false,curated
+ITB,iShares U.S. Home Construction ETF,etf,Industries and themes,price,true,false,curated
+IWM,iShares Russell 2000 ETF,etf,US equity,price,true,true,curated
+JETS,U.S. Global Jets ETF,etf,Industries and themes,price,true,false,curated
+KBE,SPDR S&P Bank ETF,etf,Industries and themes,price,true,false,curated
+KRE,SPDR S&P Regional Banking ETF,etf,Industries and themes,price,true,false,curated
+KWEB,KraneShares CSI China Internet ETF,etf,Countries,price,true,false,curated
+LIT,Global X Lithium & Battery Tech ETF,etf,Industries and themes,price,true,false,curated
+LQD,iShares Investment Grade Corporate Bond ETF,etf,Bonds,price,true,true,curated
+MCHI,iShares MSCI China ETF,etf,Countries,price,true,false,curated
+MDY,SPDR S&P MidCap 400 ETF,etf,US equity,price,true,false,curated
+MTUM,iShares MSCI USA Momentum Factor ETF,etf,US equity,price,true,false,curated
+MUB,iShares National Muni Bond ETF,etf,Bonds,price,true,false,curated
+OIH,VanEck Oil Services ETF,etf,Industries and themes,price,true,false,curated
+QQQ,Invesco QQQ Trust,etf,US equity,price,true,true,curated
+QUAL,iShares MSCI USA Quality Factor ETF,etf,US equity,price,true,false,curated
+RSP,Invesco S&P 500 Equal Weight ETF,etf,US equity,price,true,false,curated
+SHY,iShares 1-3 Year Treasury Bond ETF,etf,Bonds,price,true,false,curated
+SLV,iShares Silver Trust,etf,Commodities,price,true,true,curated
+SMH,VanEck Semiconductor ETF,etf,Industries and themes,price,true,false,curated
+SOXX,iShares Semiconductor ETF,etf,Industries and themes,price,true,false,curated
+SPY,SPDR S&P 500 ETF,etf,US equity,price,true,true,curated
+TAN,Invesco Solar ETF,etf,Industries and themes,price,true,false,curated
+TIP,iShares TIPS Bond ETF,etf,Bonds,price,true,false,curated
+TLT,iShares 20+ Year Treasury Bond ETF,etf,Bonds,price,true,true,curated
+UNG,United States Natural Gas Fund,etf,Commodities,price,true,false,curated
+URA,Global X Uranium ETF,etf,Industries and themes,price,true,false,curated
+USMV,iShares MSCI USA Min Vol Factor ETF,etf,US equity,price,true,false,curated
+USO,United States Oil Fund,etf,Commodities,price,true,false,curated
+UUP,Invesco DB US Dollar Index Bullish Fund,etf,Currencies,price,true,false,curated
+VTV,Vanguard Value ETF,etf,US equity,price,true,false,curated
+VUG,Vanguard Growth ETF,etf,US equity,price,true,false,curated
+XBI,SPDR S&P Biotech ETF,etf,Industries and themes,price,true,false,curated
+XHB,SPDR S&P Homebuilders ETF,etf,Industries and themes,price,true,false,curated
+XLB,Materials Select Sector SPDR,etf,Materials,price,true,true,curated
+XLC,Communication Services Select Sector SPDR,etf,Communication Services,price,true,true,curated
+XLE,Energy Select Sector SPDR,etf,Energy,price,true,true,curated
+XLF,Financial Select Sector SPDR,etf,Financials,price,true,true,curated
+XLI,Industrial Select Sector SPDR,etf,Industrials,price,true,true,curated
+XLK,Technology Select Sector SPDR,etf,Technology,price,true,true,curated
+XLP,Consumer Staples Select Sector SPDR,etf,Consumer Staples,price,true,true,curated
+XLRE,Real Estate Select Sector SPDR,etf,Real Estate,price,true,true,curated
+XLU,Utilities Select Sector SPDR,etf,Utilities,price,true,true,curated
+XLV,Health Care Select Sector SPDR,etf,Health Care,price,true,true,curated
+XLY,Consumer Discretionary Select Sector SPDR,etf,Consumer Discretionary,price,true,true,curated
+XOP,SPDR S&P Oil & Gas Exploration ETF,etf,Industries and themes,price,true,false,curated
+XRT,SPDR S&P Retail ETF,etf,Industries and themes,price,true,false,curated
+AUDJPY=X,Australian dollar to yen,fx,Cross pair,price,true,false,curated
+AUDUSD=X,Australian dollar to US dollar,fx,Major pair,price,true,true,curated
+DX-Y.NYB,US dollar index,fx,Dollar index,price,true,true,curated
+EURCHF=X,Euro to Swiss franc,fx,Cross pair,price,true,false,curated
+EURGBP=X,Euro to pound,fx,Cross pair,price,true,false,curated
+EURJPY=X,Euro to yen,fx,Cross pair,price,true,false,curated
+EURUSD=X,Euro to US dollar,fx,Major pair,price,true,true,curated
+GBPJPY=X,Pound to yen,fx,Cross pair,price,true,false,curated
+GBPUSD=X,Pound to US dollar,fx,Major pair,price,true,true,curated
+NZDUSD=X,New Zealand dollar to US dollar,fx,Major pair,price,true,false,curated
+USDBRL=X,US dollar to Brazilian real,fx,Emerging pair,price,true,false,curated
+USDCAD=X,US dollar to Canadian dollar,fx,Major pair,price,true,false,curated
+USDCHF=X,US dollar to Swiss franc,fx,Major pair,price,true,true,curated
+USDCNY=X,US dollar to yuan,fx,Emerging pair,price,true,false,curated
+USDINR=X,US dollar to Indian rupee,fx,Emerging pair,price,true,false,curated
+USDJPY=X,US dollar to yen,fx,Major pair,price,true,true,curated
+USDMXN=X,US dollar to Mexican peso,fx,Emerging pair,price,true,false,curated
+USDTRY=X,US dollar to Turkish lira,fx,Emerging pair,price,true,false,curated
+USDZAR=X,US dollar to South African rand,fx,Emerging pair,price,true,false,curated
+000001.SS,Shanghai Composite,index,International equity,price,true,false,curated
+^AXJO,ASX 200,index,International equity,price,true,false,curated
+^BVSP,Bovespa,index,International equity,price,true,false,curated
+^DJI,Dow Jones Industrial Average,index,US equity,price,true,true,curated
+^FCHI,CAC 40,index,International equity,price,true,false,curated
+^FTSE,FTSE 100,index,International equity,price,true,true,curated
+^GDAXI,DAX,index,International equity,price,true,true,curated
+^GSPC,S&P 500,index,US equity,price,true,true,curated
+^GSPTSE,S&P/TSX Composite,index,International equity,price,true,false,curated
+^HSI,Hang Seng,index,International equity,price,true,false,curated
+^KS11,KOSPI,index,International equity,price,true,false,curated
+^N225,Nikkei 225,index,International equity,price,true,true,curated
+^NDX,Nasdaq 100,index,US equity,price,true,true,curated
+^NSEI,Nifty 50,index,International equity,price,true,false,curated
+^RUT,Russell 2000,index,US equity,price,true,true,curated
+^SOX,Philadelphia Semiconductor,index,US equity,price,true,false,curated
+^STOXX50E,Euro Stoxx 50,index,International equity,price,true,false,curated
+^VIX,CBOE Volatility Index,index,Volatility,price,true,true,curated
+^FVX,US 5-year yield,rate,Treasury yield,yield,true,true,curated
+^IRX,US 13-week bill yield,rate,Treasury yield,yield,true,true,curated
+^TNX,US 10-year yield,rate,Treasury yield,yield,true,true,curated
+^TYX,US 30-year yield,rate,Treasury yield,yield,true,true,curated
+A,Agilent Technologies,stock,Health Care,price,true,false,sp500
+AAPL,Apple,stock,Technology,price,true,true,sp500
+ABBV,AbbVie,stock,Health Care,price,true,false,sp500
+ABNB,Airbnb,stock,Consumer Discretionary,price,true,false,sp500
+ABT,Abbott Laboratories,stock,Health Care,price,true,false,sp500
+ACGL,Arch Capital Group,stock,Financials,price,true,false,sp500
+ACN,Accenture,stock,Technology,price,true,false,sp500
+ADBE,Adobe,stock,Technology,price,true,true,sp500
+ADI,Analog Devices,stock,Technology,price,true,false,sp500
+ADM,Archer Daniels Midland,stock,Consumer Staples,price,true,false,sp500
+ADP,Automatic Data Processing,stock,Industrials,price,true,false,sp500
+ADSK,Autodesk,stock,Technology,price,true,false,sp500
+AEE,Ameren,stock,Utilities,price,true,false,sp500
+AEP,American Electric Power,stock,Utilities,price,true,false,sp500
+AES,AES Corporation,stock,Utilities,price,true,false,sp500
+AFL,Aflac,stock,Financials,price,true,false,sp500
+AIG,American International Group,stock,Financials,price,true,false,sp500
+AIZ,Assurant,stock,Financials,price,true,false,sp500
+AJG,Arthur J. Gallagher & Co.,stock,Financials,price,true,false,sp500
+AKAM,Akamai Technologies,stock,Technology,price,true,false,sp500
+ALB,Albemarle Corporation,stock,Materials,price,true,false,sp500
+ALGN,Align Technology,stock,Health Care,price,true,false,sp500
+ALL,Allstate,stock,Financials,price,true,false,sp500
+ALLE,Allegion,stock,Industrials,price,true,false,sp500
+AMAT,Applied Materials,stock,Technology,price,true,false,sp500
+AMCR,Amcor,stock,Materials,price,true,false,sp500
+AMD,Advanced Micro Devices,stock,Technology,price,true,true,sp500
+AME,Ametek,stock,Industrials,price,true,false,sp500
+AMGN,Amgen,stock,Health Care,price,true,false,sp500
+AMP,Ameriprise Financial,stock,Financials,price,true,false,sp500
+AMT,American Tower,stock,Real Estate,price,true,false,sp500
+AMZN,Amazon,stock,Consumer Discretionary,price,true,true,sp500
+ANET,Arista Networks,stock,Technology,price,true,false,sp500
+AON,Aon plc,stock,Financials,price,true,false,sp500
+AOS,A. O. Smith,stock,Industrials,price,true,false,sp500
+APA,APA Corporation,stock,Energy,price,true,false,sp500
+APD,Air Products,stock,Materials,price,true,false,sp500
+APH,Amphenol,stock,Technology,price,true,false,sp500
+APO,Apollo Global Management,stock,Financials,price,true,false,sp500
+APP,AppLovin,stock,Communication Services,price,true,false,sp500
+APTV,Aptiv,stock,Consumer Discretionary,price,true,false,sp500
+ARE,Alexandria Real Estate Equities,stock,Real Estate,price,true,false,sp500
+ARES,Ares Management,stock,Financials,price,true,false,sp500
+ARM,Arm Holdings,stock,Technology,price,true,false,curated
+ASML,ASML Holding,stock,Technology,price,true,false,curated
+ATO,Atmos Energy,stock,Utilities,price,true,false,sp500
+AVGO,Broadcom,stock,Technology,price,true,true,sp500
+AVY,Avery Dennison,stock,Materials,price,true,false,sp500
+AWK,American Water Works,stock,Utilities,price,true,false,sp500
+AXON,Axon Enterprise,stock,Industrials,price,true,false,sp500
+AXP,American Express,stock,Financials,price,true,false,sp500
+AZN,AstraZeneca,stock,Health Care,price,true,false,curated
+AZO,AutoZone,stock,Consumer Discretionary,price,true,false,sp500
+BA,Boeing,stock,Industrials,price,true,true,sp500
+BAC,Bank of America,stock,Financials,price,true,true,sp500
+BALL,Ball Corporation,stock,Materials,price,true,false,sp500
+BAX,Baxter International,stock,Health Care,price,true,false,sp500
+BBY,Best Buy,stock,Consumer Discretionary,price,true,false,sp500
+BDX,Becton Dickinson,stock,Health Care,price,true,false,sp500
+BE,Bloom Energy,stock,Industrials,price,true,false,sp500
+BEN,Franklin Resources,stock,Financials,price,true,false,sp500
+BF-B,Brown–Forman,stock,Consumer Staples,price,true,false,sp500
+BG,Bunge Global,stock,Consumer Staples,price,true,false,sp500
+BIIB,Biogen,stock,Health Care,price,true,false,sp500
+BKNG,Booking Holdings,stock,Consumer Discretionary,price,true,false,sp500
+BKR,Baker Hughes,stock,Energy,price,true,false,sp500
+BLK,BlackRock,stock,Financials,price,true,false,sp500
+BMY,Bristol Myers Squibb,stock,Health Care,price,true,false,sp500
+BNY,BNY Mellon,stock,Financials,price,true,false,sp500
+BR,Broadridge Financial Solutions,stock,Industrials,price,true,false,sp500
+BRK-B,Berkshire Hathaway,stock,Financials,price,true,false,sp500
+BRO,Brown & Brown,stock,Financials,price,true,false,sp500
+BSX,Boston Scientific,stock,Health Care,price,true,false,sp500
+BX,Blackstone Inc.,stock,Financials,price,true,false,sp500
+BXP,"BXP, Inc.",stock,Real Estate,price,true,false,sp500
+C,Citigroup,stock,Financials,price,true,false,sp500
+CAH,Cardinal Health,stock,Health Care,price,true,false,sp500
+CARR,Carrier Global,stock,Industrials,price,true,false,sp500
+CASY,Casey's,stock,Consumer Staples,price,true,false,sp500
+CAT,Caterpillar,stock,Industrials,price,true,true,sp500
+CB,Chubb Limited,stock,Financials,price,true,false,sp500
+CBOE,Cboe Global Markets,stock,Financials,price,true,false,sp500
+CBRE,CBRE Group,stock,Real Estate,price,true,false,sp500
+CCEP,Coca-Cola Europacific Partners,stock,Consumer Staples,price,true,false,curated
+CCI,Crown Castle,stock,Real Estate,price,true,false,sp500
+CCL,Carnival Corporation,stock,Consumer Discretionary,price,true,false,sp500
+CDNS,Cadence Design Systems,stock,Technology,price,true,false,sp500
+CDW,CDW Corporation,stock,Technology,price,true,false,sp500
+CEG,Constellation Energy,stock,Utilities,price,true,false,sp500
+CF,CF Industries,stock,Materials,price,true,false,sp500
+CFG,Citizens Financial Group,stock,Financials,price,true,false,sp500
+CHD,Church & Dwight,stock,Consumer Staples,price,true,false,sp500
+CHRW,C.H. Robinson,stock,Industrials,price,true,false,sp500
+CHTR,Charter Communications,stock,Communication Services,price,true,false,sp500
+CI,Cigna,stock,Health Care,price,true,false,sp500
+CIEN,Ciena,stock,Technology,price,true,false,sp500
+CINF,Cincinnati Financial,stock,Financials,price,true,false,sp500
+CL,Colgate-Palmolive,stock,Consumer Staples,price,true,false,sp500
+CLX,Clorox,stock,Consumer Staples,price,true,false,sp500
+CMCSA,Comcast,stock,Communication Services,price,true,false,sp500
+CME,CME Group,stock,Financials,price,true,false,sp500
+CMG,Chipotle Mexican Grill,stock,Consumer Discretionary,price,true,false,sp500
+CMI,Cummins,stock,Industrials,price,true,false,sp500
+CMS,CMS Energy,stock,Utilities,price,true,false,sp500
+CNC,Centene Corporation,stock,Health Care,price,true,false,sp500
+CNP,CenterPoint Energy,stock,Utilities,price,true,false,sp500
+COF,Capital One,stock,Financials,price,true,false,sp500
+COHR,Coherent Corp.,stock,Technology,price,true,false,sp500
+COIN,Coinbase,stock,Financials,price,true,false,sp500
+COO,Cooper Companies (The),stock,Health Care,price,true,false,sp500
+COP,ConocoPhillips,stock,Energy,price,true,false,sp500
+COR,Cencora,stock,Health Care,price,true,false,sp500
+COST,Costco,stock,Consumer Staples,price,true,true,sp500
+CPAY,Corpay,stock,Financials,price,true,false,sp500
+CPRT,Copart,stock,Industrials,price,true,false,sp500
+CPT,Camden Property Trust,stock,Real Estate,price,true,false,sp500
+CRH,CRH plc,stock,Materials,price,true,false,sp500
+CRL,Charles River Laboratories,stock,Health Care,price,true,false,sp500
+CRM,Salesforce,stock,Technology,price,true,true,sp500
+CRWD,CrowdStrike,stock,Technology,price,true,false,sp500
+CSCO,Cisco,stock,Technology,price,true,true,sp500
+CSGP,CoStar Group,stock,Real Estate,price,true,false,sp500
+CSX,CSX Corporation,stock,Industrials,price,true,false,sp500
+CTAS,Cintas,stock,Industrials,price,true,false,sp500
+CTSH,Cognizant,stock,Technology,price,true,false,sp500
+CVNA,Carvana,stock,Consumer Discretionary,price,true,false,sp500
+CVS,CVS Health,stock,Health Care,price,true,false,sp500
+CVX,Chevron,stock,Energy,price,true,true,sp500
+D,Dominion Energy,stock,Utilities,price,true,false,sp500
+DAL,Delta Air Lines,stock,Industrials,price,true,false,sp500
+DASH,DoorDash,stock,Consumer Discretionary,price,true,false,sp500
+DD,DuPont,stock,Industrials,price,true,false,sp500
+DDOG,Datadog,stock,Technology,price,true,false,sp500
+DE,Deere & Company,stock,Industrials,price,true,false,sp500
+DECK,Deckers Brands,stock,Consumer Discretionary,price,true,false,sp500
+DELL,Dell Technologies,stock,Technology,price,true,false,sp500
+DG,Dollar General,stock,Consumer Staples,price,true,false,sp500
+DGX,Quest Diagnostics,stock,Health Care,price,true,false,sp500
+DHI,D. R. Horton,stock,Consumer Discretionary,price,true,false,sp500
+DHR,Danaher Corporation,stock,Health Care,price,true,false,sp500
+DIS,Walt Disney,stock,Communication Services,price,true,true,sp500
+DLR,Digital Realty,stock,Real Estate,price,true,false,sp500
+DLTR,Dollar Tree,stock,Consumer Staples,price,true,false,sp500
+DOC,Healthpeak Properties,stock,Real Estate,price,true,false,sp500
+DOV,Dover Corporation,stock,Industrials,price,true,false,sp500
+DOW,Dow Inc.,stock,Materials,price,true,false,sp500
+DPZ,Domino's,stock,Consumer Discretionary,price,true,false,sp500
+DRI,Darden Restaurants,stock,Consumer Discretionary,price,true,false,sp500
+DTE,DTE Energy,stock,Utilities,price,true,false,sp500
+DUK,Duke Energy,stock,Utilities,price,true,false,sp500
+DVA,DaVita,stock,Health Care,price,true,false,sp500
+DVN,Devon Energy,stock,Energy,price,true,false,sp500
+DXCM,Dexcom,stock,Health Care,price,true,false,sp500
+EBAY,eBay Inc.,stock,Consumer Discretionary,price,true,false,sp500
+ECHO,EchoStar,stock,Communication Services,price,true,false,sp500
+ECL,Ecolab,stock,Materials,price,true,false,sp500
+ED,Consolidated Edison,stock,Utilities,price,true,false,sp500
+EFX,Equifax,stock,Industrials,price,true,false,sp500
+EG,Everest Group,stock,Financials,price,true,false,sp500
+EIX,Edison International,stock,Utilities,price,true,false,sp500
+EL,Estée Lauder Companies (The),stock,Consumer Staples,price,true,false,sp500
+ELV,Elevance Health,stock,Health Care,price,true,false,sp500
+EME,Emcor,stock,Industrials,price,true,false,sp500
+EMR,Emerson Electric,stock,Industrials,price,true,false,sp500
+EOG,EOG Resources,stock,Energy,price,true,false,sp500
+EQIX,Equinix,stock,Real Estate,price,true,false,sp500
+EQT,EQT Corporation,stock,Energy,price,true,false,sp500
+ERIE,Erie Indemnity,stock,Financials,price,true,false,sp500
+ES,Eversource Energy,stock,Utilities,price,true,false,sp500
+ESS,Essex Property Trust,stock,Real Estate,price,true,false,sp500
+ETN,Eaton Corporation,stock,Industrials,price,true,false,sp500
+ETR,Entergy,stock,Utilities,price,true,false,sp500
+EVRG,Evergy,stock,Utilities,price,true,false,sp500
+EW,Edwards Lifesciences,stock,Health Care,price,true,false,sp500
+EXC,Exelon,stock,Utilities,price,true,false,sp500
+EXE,Expand Energy,stock,Energy,price,true,false,sp500
+EXPD,Expeditors International,stock,Industrials,price,true,false,sp500
+EXPE,Expedia Group,stock,Consumer Discretionary,price,true,false,sp500
+EXR,Extra Space Storage,stock,Real Estate,price,true,false,sp500
+F,Ford Motor Company,stock,Consumer Discretionary,price,true,false,sp500
+FANG,Diamondback Energy,stock,Energy,price,true,false,sp500
+FAST,Fastenal,stock,Industrials,price,true,false,sp500
+FCX,Freeport-McMoRan,stock,Materials,price,true,false,sp500
+FDS,FactSet,stock,Financials,price,true,false,sp500
+FDX,FedEx,stock,Industrials,price,true,false,sp500
+FDXF,FedEx Freight,stock,Industrials,price,true,false,sp500
+FE,FirstEnergy,stock,Utilities,price,true,false,sp500
+FERG,Ferguson Enterprises,stock,Industrials,price,true,false,sp500
+FFIV,"F5, Inc.",stock,Technology,price,true,false,sp500
+FICO,Fair Isaac,stock,Technology,price,true,false,sp500
+FIS,Fidelity National Information Services,stock,Financials,price,true,false,sp500
+FISV,Fiserv,stock,Financials,price,true,false,sp500
+FITB,Fifth Third Bancorp,stock,Financials,price,true,false,sp500
+FIX,Comfort Systems USA,stock,Industrials,price,true,false,sp500
+FLEX,Flex Ltd.,stock,Technology,price,true,false,sp500
+FOX,Fox Corporation (Class B),stock,Communication Services,price,true,false,sp500
+FOXA,Fox Corporation (Class A),stock,Communication Services,price,true,false,sp500
+FRT,Federal Realty Investment Trust,stock,Real Estate,price,true,false,sp500
+FSLR,First Solar,stock,Technology,price,true,false,sp500
+FTNT,Fortinet,stock,Technology,price,true,false,sp500
+FTV,Fortive,stock,Industrials,price,true,false,sp500
+GD,General Dynamics,stock,Industrials,price,true,false,sp500
+GDDY,GoDaddy,stock,Technology,price,true,false,sp500
+GE,GE Aerospace,stock,Industrials,price,true,true,sp500
+GEHC,GE HealthCare,stock,Health Care,price,true,false,sp500
+GEN,Gen Digital,stock,Technology,price,true,false,sp500
+GEV,GE Vernova,stock,Industrials,price,true,false,sp500
+GFS,GlobalFoundries,stock,Technology,price,true,false,curated
+GILD,Gilead Sciences,stock,Health Care,price,true,false,sp500
+GIS,General Mills,stock,Consumer Staples,price,true,false,sp500
+GL,Globe Life,stock,Financials,price,true,false,sp500
+GLW,Corning Inc.,stock,Technology,price,true,false,sp500
+GM,General Motors,stock,Consumer Discretionary,price,true,false,sp500
+GNRC,Generac,stock,Industrials,price,true,false,sp500
+GOOG,Alphabet Inc. (Class C),stock,Communication Services,price,true,false,sp500
+GOOGL,Alphabet,stock,Communication Services,price,true,true,sp500
+GPC,Genuine Parts Company,stock,Consumer Discretionary,price,true,false,sp500
+GPN,Global Payments,stock,Financials,price,true,false,sp500
+GRMN,Garmin,stock,Consumer Discretionary,price,true,false,sp500
+GS,Goldman Sachs,stock,Financials,price,true,true,sp500
+GWW,W. W. Grainger,stock,Industrials,price,true,false,sp500
+HAL,Halliburton,stock,Energy,price,true,false,sp500
+HAS,Hasbro,stock,Consumer Discretionary,price,true,false,sp500
+HBAN,Huntington Bancshares,stock,Financials,price,true,false,sp500
+HCA,HCA Healthcare,stock,Health Care,price,true,false,sp500
+HD,Home Depot,stock,Consumer Discretionary,price,true,true,sp500
+HIG,Hartford (The),stock,Financials,price,true,false,sp500
+HII,Huntington Ingalls Industries,stock,Industrials,price,true,false,sp500
+HLT,Hilton Worldwide,stock,Consumer Discretionary,price,true,false,sp500
+HON,Honeywell Technologies,stock,Industrials,price,true,false,sp500
+HONA,Honeywell Aerospace,stock,Industrials,price,true,false,sp500
+HOOD,Robinhood Markets,stock,Financials,price,true,false,sp500
+HPE,Hewlett Packard Enterprise,stock,Technology,price,true,false,sp500
+HPQ,HP Inc.,stock,Technology,price,true,false,sp500
+HRL,Hormel Foods,stock,Consumer Staples,price,true,false,sp500
+HSIC,Henry Schein,stock,Health Care,price,true,false,sp500
+HST,Host Hotels & Resorts,stock,Real Estate,price,true,false,sp500
+HSY,Hershey Company (The),stock,Consumer Staples,price,true,false,sp500
+HUBB,Hubbell Incorporated,stock,Industrials,price,true,false,sp500
+HUM,Humana,stock,Health Care,price,true,false,sp500
+HWM,Howmet Aerospace,stock,Industrials,price,true,false,sp500
+IBKR,Interactive Brokers,stock,Financials,price,true,false,sp500
+IBM,IBM,stock,Technology,price,true,false,sp500
+ICE,Intercontinental Exchange,stock,Financials,price,true,false,sp500
+IDXX,Idexx Laboratories,stock,Health Care,price,true,false,sp500
+IEX,IDEX Corporation,stock,Industrials,price,true,false,sp500
+IFF,International Flavors & Fragrances,stock,Materials,price,true,false,sp500
+ILMN,"Illumina, Inc.",stock,Health Care,price,true,false,sp500
+INCY,Incyte,stock,Health Care,price,true,false,sp500
+INTC,Intel,stock,Technology,price,true,true,sp500
+INTU,Intuit,stock,Technology,price,true,false,sp500
+INVH,Invitation Homes,stock,Real Estate,price,true,false,sp500
+IP,International Paper,stock,Materials,price,true,false,sp500
+IQV,IQVIA,stock,Health Care,price,true,false,sp500
+IR,Ingersoll Rand,stock,Industrials,price,true,false,sp500
+IRM,Iron Mountain,stock,Real Estate,price,true,false,sp500
+ISRG,Intuitive Surgical,stock,Health Care,price,true,false,sp500
+IT,Gartner,stock,Technology,price,true,false,sp500
+ITW,Illinois Tool Works,stock,Industrials,price,true,false,sp500
+IVZ,Invesco,stock,Financials,price,true,false,sp500
+J,Jacobs Solutions,stock,Industrials,price,true,false,sp500
+JBHT,J.B. Hunt,stock,Industrials,price,true,false,sp500
+JBL,Jabil,stock,Technology,price,true,false,sp500
+JCI,Johnson Controls,stock,Industrials,price,true,false,sp500
+JKHY,Jack Henry & Associates,stock,Financials,price,true,false,sp500
+JNJ,Johnson & Johnson,stock,Health Care,price,true,true,sp500
+JPM,JPMorgan Chase,stock,Financials,price,true,true,sp500
+KDP,Keurig Dr Pepper,stock,Consumer Staples,price,true,false,sp500
+KEY,KeyCorp,stock,Financials,price,true,false,sp500
+KEYS,Keysight Technologies,stock,Technology,price,true,false,sp500
+KHC,Kraft Heinz,stock,Consumer Staples,price,true,false,sp500
+KIM,Kimco Realty,stock,Real Estate,price,true,false,sp500
+KKR,KKR & Co.,stock,Financials,price,true,false,sp500
+KLAC,KLA Corporation,stock,Technology,price,true,false,sp500
+KMB,Kimberly-Clark,stock,Consumer Staples,price,true,false,sp500
+KMI,Kinder Morgan,stock,Energy,price,true,false,sp500
+KO,Coca-Cola,stock,Consumer Staples,price,true,true,sp500
+KR,Kroger,stock,Consumer Staples,price,true,false,sp500
+L,Loews Corporation,stock,Financials,price,true,false,sp500
+LDOS,Leidos,stock,Industrials,price,true,false,sp500
+LEN,Lennar,stock,Consumer Discretionary,price,true,false,sp500
+LH,Labcorp,stock,Health Care,price,true,false,sp500
+LHX,L3Harris,stock,Industrials,price,true,false,sp500
+LII,Lennox International,stock,Industrials,price,true,false,sp500
+LIN,Linde plc,stock,Materials,price,true,false,sp500
+LITE,Lumentum,stock,Technology,price,true,false,sp500
+LLY,Eli Lilly,stock,Health Care,price,true,true,sp500
+LMT,Lockheed Martin,stock,Industrials,price,true,false,sp500
+LNT,Alliant Energy,stock,Utilities,price,true,false,sp500
+LOW,Lowe's,stock,Consumer Discretionary,price,true,false,sp500
+LRCX,Lam Research,stock,Technology,price,true,false,sp500
+LULU,Lululemon Athletica,stock,Consumer Discretionary,price,true,false,sp500
+LUV,Southwest Airlines,stock,Industrials,price,true,false,sp500
+LVS,Las Vegas Sands,stock,Consumer Discretionary,price,true,false,sp500
+LYB,LyondellBasell,stock,Materials,price,true,false,sp500
+LYV,Live Nation Entertainment,stock,Communication Services,price,true,false,sp500
+MA,Mastercard,stock,Financials,price,true,true,sp500
+MAA,Mid-America Apartment Communities,stock,Real Estate,price,true,false,sp500
+MAR,Marriott International,stock,Consumer Discretionary,price,true,false,sp500
+MAS,Masco,stock,Industrials,price,true,false,sp500
+MCD,McDonald's,stock,Consumer Discretionary,price,true,true,sp500
+MCHP,Microchip Technology,stock,Technology,price,true,false,sp500
+MCK,McKesson,stock,Health Care,price,true,false,sp500
+MCO,Moody's Corporation,stock,Financials,price,true,false,sp500
+MDLZ,Mondelez International,stock,Consumer Staples,price,true,false,sp500
+MDT,Medtronic,stock,Health Care,price,true,false,sp500
+MELI,MercadoLibre,stock,Consumer Discretionary,price,true,false,curated
+MET,MetLife,stock,Financials,price,true,false,sp500
+META,Meta Platforms,stock,Communication Services,price,true,true,sp500
+MGM,MGM Resorts,stock,Consumer Discretionary,price,true,false,sp500
+MKC,McCormick & Company,stock,Consumer Staples,price,true,false,sp500
+MLM,Martin Marietta Materials,stock,Materials,price,true,false,sp500
+MMM,3M,stock,Industrials,price,true,false,sp500
+MNST,Monster Beverage,stock,Consumer Staples,price,true,false,sp500
+MO,Altria,stock,Consumer Staples,price,true,false,sp500
+MOS,Mosaic Company (The),stock,Materials,price,true,false,sp500
+MPC,Marathon Petroleum,stock,Energy,price,true,false,sp500
+MPWR,Monolithic Power Systems,stock,Technology,price,true,false,sp500
+MRK,Merck,stock,Health Care,price,true,true,sp500
+MRNA,Moderna,stock,Health Care,price,true,false,sp500
+MRSH,Marsh McLennan,stock,Financials,price,true,false,sp500
+MRVL,Marvell Technology,stock,Technology,price,true,false,sp500
+MS,Morgan Stanley,stock,Financials,price,true,false,sp500
+MSCI,MSCI,stock,Financials,price,true,false,sp500
+MSFT,Microsoft,stock,Technology,price,true,true,sp500
+MSI,Motorola Solutions,stock,Technology,price,true,false,sp500
+MSTR,Strategy,stock,Technology,price,true,false,curated
+MTB,M&T Bank,stock,Financials,price,true,false,sp500
+MTD,Mettler Toledo,stock,Health Care,price,true,false,sp500
+MU,Micron Technology,stock,Technology,price,true,false,sp500
+NCLH,Norwegian Cruise Line Holdings,stock,Consumer Discretionary,price,true,false,sp500
+NDAQ,"Nasdaq, Inc.",stock,Financials,price,true,false,sp500
+NDSN,Nordson Corporation,stock,Industrials,price,true,false,sp500
+NEE,NextEra Energy,stock,Utilities,price,true,false,sp500
+NEM,Newmont,stock,Materials,price,true,false,sp500
+NFLX,Netflix,stock,Communication Services,price,true,true,sp500
+NI,NiSource,stock,Utilities,price,true,false,sp500
+NKE,Nike,stock,Consumer Discretionary,price,true,true,sp500
+NOC,Northrop Grumman,stock,Industrials,price,true,false,sp500
+NOW,ServiceNow,stock,Technology,price,true,false,sp500
+NRG,NRG Energy,stock,Utilities,price,true,false,sp500
+NSC,Norfolk Southern,stock,Industrials,price,true,false,sp500
+NTAP,NetApp,stock,Technology,price,true,false,sp500
+NTRS,Northern Trust,stock,Financials,price,true,false,sp500
+NUE,Nucor,stock,Materials,price,true,false,sp500
+NVDA,NVIDIA,stock,Technology,price,true,true,sp500
+NVR,"NVR, Inc.",stock,Consumer Discretionary,price,true,false,sp500
+NWS,News Corp (Class B),stock,Communication Services,price,true,false,sp500
+NWSA,News Corp (Class A),stock,Communication Services,price,true,false,sp500
+NXPI,NXP Semiconductors,stock,Technology,price,true,false,sp500
+O,Realty Income,stock,Real Estate,price,true,false,sp500
+ODFL,Old Dominion,stock,Industrials,price,true,false,sp500
+OKE,Oneok,stock,Energy,price,true,false,sp500
+OKTA,"Okta, Inc.",stock,Technology,price,true,false,sp500
+OMC,Omnicom Group,stock,Communication Services,price,true,false,sp500
+ON,ON Semiconductor,stock,Technology,price,true,false,sp500
+ORCL,Oracle,stock,Technology,price,true,true,sp500
+ORLY,O'Reilly Automotive,stock,Consumer Discretionary,price,true,false,sp500
+OTIS,Otis Worldwide,stock,Industrials,price,true,false,sp500
+OXY,Occidental Petroleum,stock,Energy,price,true,false,sp500
+P,Everpure,stock,Technology,price,true,false,sp500
+PANW,Palo Alto Networks,stock,Technology,price,true,false,sp500
+PAYX,Paychex,stock,Industrials,price,true,false,sp500
+PCAR,Paccar,stock,Industrials,price,true,false,sp500
+PCG,PG&E Corporation,stock,Utilities,price,true,false,sp500
+PDD,PDD Holdings,stock,Consumer Discretionary,price,true,false,curated
+PEG,Public Service Enterprise Group,stock,Utilities,price,true,false,sp500
+PEP,PepsiCo,stock,Consumer Staples,price,true,true,sp500
+PFE,Pfizer,stock,Health Care,price,true,true,sp500
+PFG,Principal Financial Group,stock,Financials,price,true,false,sp500
+PG,Procter & Gamble,stock,Consumer Staples,price,true,true,sp500
+PGR,Progressive Corporation,stock,Financials,price,true,false,sp500
+PH,Parker Hannifin,stock,Industrials,price,true,false,sp500
+PHM,PulteGroup,stock,Consumer Discretionary,price,true,false,sp500
+PKG,Packaging Corporation of America,stock,Materials,price,true,false,sp500
+PLD,Prologis,stock,Real Estate,price,true,false,sp500
+PLTR,Palantir Technologies,stock,Technology,price,true,false,sp500
+PM,Philip Morris International,stock,Consumer Staples,price,true,false,sp500
+PNC,PNC Financial Services,stock,Financials,price,true,false,sp500
+PNR,Pentair,stock,Industrials,price,true,false,sp500
+PNW,Pinnacle West Capital,stock,Utilities,price,true,false,sp500
+PODD,Insulet Corporation,stock,Health Care,price,true,false,sp500
+PPG,PPG Industries,stock,Materials,price,true,false,sp500
+PPL,PPL Corporation,stock,Utilities,price,true,false,sp500
+PRU,Prudential Financial,stock,Financials,price,true,false,sp500
+PSA,Public Storage,stock,Real Estate,price,true,false,sp500
+PSX,Phillips 66,stock,Energy,price,true,false,sp500
+PTC,PTC Inc.,stock,Technology,price,true,false,sp500
+PWR,Quanta Services,stock,Industrials,price,true,false,sp500
+PYPL,PayPal,stock,Financials,price,true,false,sp500
+Q,Qnity Electronics,stock,Technology,price,true,false,sp500
+QCOM,Qualcomm,stock,Technology,price,true,false,sp500
+RCL,Royal Caribbean Group,stock,Consumer Discretionary,price,true,false,sp500
+RDDT,Reddit,stock,Communication Services,price,true,false,sp500
+REG,Regency Centers,stock,Real Estate,price,true,false,sp500
+REGN,Regeneron Pharmaceuticals,stock,Health Care,price,true,false,sp500
+RF,Regions Financial Corporation,stock,Financials,price,true,false,sp500
+RJF,Raymond James Financial,stock,Financials,price,true,false,sp500
+RL,Ralph Lauren Corporation,stock,Consumer Discretionary,price,true,false,sp500
+RMD,ResMed,stock,Health Care,price,true,false,sp500
+ROK,Rockwell Automation,stock,Industrials,price,true,false,sp500
+ROL,"Rollins, Inc.",stock,Industrials,price,true,false,sp500
+ROP,Roper Technologies,stock,Technology,price,true,false,sp500
+ROST,Ross Stores,stock,Consumer Discretionary,price,true,false,sp500
+RSG,Republic Services,stock,Industrials,price,true,false,sp500
+RTX,RTX Corporation,stock,Industrials,price,true,false,sp500
+RVTY,Revvity,stock,Health Care,price,true,false,sp500
+SBAC,SBA Communications,stock,Real Estate,price,true,false,sp500
+SBUX,Starbucks,stock,Consumer Discretionary,price,true,false,sp500
+SCHW,Charles Schwab Corporation,stock,Financials,price,true,false,sp500
+SHOP,Shopify,stock,Technology,price,true,false,curated
+SHW,Sherwin-Williams,stock,Materials,price,true,false,sp500
+SJM,J.M. Smucker Company (The),stock,Consumer Staples,price,true,false,sp500
+SKYD,Skydance,stock,Communication Services,price,true,false,sp500
+SLB,Schlumberger,stock,Energy,price,true,false,sp500
+SMCI,Supermicro,stock,Technology,price,true,false,sp500
+SNA,Snap-on,stock,Industrials,price,true,false,sp500
+SNDK,Sandisk,stock,Technology,price,true,false,sp500
+SNPS,Synopsys,stock,Technology,price,true,false,sp500
+SO,Southern Company,stock,Utilities,price,true,false,sp500
+SOLV,Solventum,stock,Health Care,price,true,false,sp500
+SPG,Simon Property Group,stock,Real Estate,price,true,false,sp500
+SPGI,S&P Global,stock,Financials,price,true,false,sp500
+SRE,Sempra,stock,Utilities,price,true,false,sp500
+STE,Steris,stock,Health Care,price,true,false,sp500
+STLD,Steel Dynamics,stock,Materials,price,true,false,sp500
+STT,State Street Corporation,stock,Financials,price,true,false,sp500
+STX,Seagate Technology,stock,Technology,price,true,false,sp500
+STZ,Constellation Brands,stock,Consumer Staples,price,true,false,sp500
+SW,Smurfit Westrock,stock,Materials,price,true,false,sp500
+SWK,Stanley Black & Decker,stock,Industrials,price,true,false,sp500
+SWKS,Skyworks Solutions,stock,Technology,price,true,false,sp500
+SYF,Synchrony Financial,stock,Financials,price,true,false,sp500
+SYK,Stryker Corporation,stock,Health Care,price,true,false,sp500
+SYY,Sysco,stock,Consumer Staples,price,true,false,sp500
+T,AT&T,stock,Communication Services,price,true,false,sp500
+TDG,TransDigm Group,stock,Industrials,price,true,false,sp500
+TDY,Teledyne Technologies,stock,Technology,price,true,false,sp500
+TEAM,Atlassian,stock,Technology,price,true,false,curated
+TECH,Bio-Techne,stock,Health Care,price,true,false,sp500
+TEL,TE Connectivity,stock,Technology,price,true,false,sp500
+TER,Teradyne,stock,Technology,price,true,false,sp500
+TFC,Truist Financial,stock,Financials,price,true,false,sp500
+TGT,Target Corporation,stock,Consumer Staples,price,true,false,sp500
+TJX,TJX Companies,stock,Consumer Discretionary,price,true,false,sp500
+TKO,TKO Group Holdings,stock,Communication Services,price,true,false,sp500
+TMO,Thermo Fisher Scientific,stock,Health Care,price,true,false,sp500
+TMUS,T-Mobile US,stock,Communication Services,price,true,false,sp500
+TPL,Texas Pacific Land Corporation,stock,Energy,price,true,false,sp500
+TPR,"Tapestry, Inc.",stock,Consumer Discretionary,price,true,false,sp500
+TRGP,Targa Resources,stock,Energy,price,true,false,sp500
+TRMB,Trimble Inc.,stock,Technology,price,true,false,sp500
+TROW,T. Rowe Price,stock,Financials,price,true,false,sp500
+TRV,Travelers Companies (The),stock,Financials,price,true,false,sp500
+TSCO,Tractor Supply,stock,Consumer Discretionary,price,true,false,sp500
+TSLA,Tesla,stock,Consumer Discretionary,price,true,true,sp500
+TSN,Tyson Foods,stock,Consumer Staples,price,true,false,sp500
+TT,Trane Technologies,stock,Industrials,price,true,false,sp500
+TTD,The Trade Desk,stock,Technology,price,true,false,curated
+TTWO,Take-Two Interactive,stock,Communication Services,price,true,false,sp500
+TWLO,Twilio,stock,Technology,price,true,false,sp500
+TXN,Texas Instruments,stock,Technology,price,true,false,sp500
+TXT,Textron,stock,Industrials,price,true,false,sp500
+TYL,Tyler Technologies,stock,Technology,price,true,false,sp500
+UAL,United Airlines Holdings,stock,Industrials,price,true,false,sp500
+UBER,Uber,stock,Industrials,price,true,false,sp500
+UDR,"UDR, Inc.",stock,Real Estate,price,true,false,sp500
+UHS,Universal Health Services,stock,Health Care,price,true,false,sp500
+ULTA,Ulta Beauty,stock,Consumer Discretionary,price,true,false,sp500
+UNH,UnitedHealth,stock,Health Care,price,true,true,sp500
+UNP,Union Pacific Corporation,stock,Industrials,price,true,false,sp500
+UPS,United Parcel Service,stock,Industrials,price,true,true,sp500
+URI,United Rentals,stock,Industrials,price,true,false,sp500
+USB,U.S. Bancorp,stock,Financials,price,true,false,sp500
+V,Visa,stock,Financials,price,true,true,sp500
+VEEV,Veeva Systems,stock,Health Care,price,true,false,sp500
+VICI,Vici Properties,stock,Real Estate,price,true,false,sp500
+VLO,Valero Energy,stock,Energy,price,true,false,sp500
+VLTO,Veralto,stock,Industrials,price,true,false,sp500
+VMC,Vulcan Materials Company,stock,Materials,price,true,false,sp500
+VMRK,Vivmark Residential,stock,Real Estate,price,true,false,sp500
+VRSK,Verisk Analytics,stock,Industrials,price,true,false,sp500
+VRSN,Verisign,stock,Technology,price,true,false,sp500
+VRT,Vertiv,stock,Industrials,price,true,false,sp500
+VRTX,Vertex Pharmaceuticals,stock,Health Care,price,true,false,sp500
+VST,Vistra Corp.,stock,Utilities,price,true,false,sp500
+VTR,Ventas,stock,Real Estate,price,true,false,sp500
+VTRS,Viatris,stock,Health Care,price,true,false,sp500
+VYLR,Vylor,stock,Consumer Staples,price,true,false,sp500
+VZ,Verizon,stock,Communication Services,price,true,false,sp500
+WAB,Wabtec,stock,Industrials,price,true,false,sp500
+WAT,Waters Corporation,stock,Health Care,price,true,false,sp500
+WDAY,"Workday, Inc.",stock,Technology,price,true,false,sp500
+WDC,Western Digital,stock,Technology,price,true,false,sp500
+WEC,WEC Energy Group,stock,Utilities,price,true,false,sp500
+WELL,Welltower,stock,Real Estate,price,true,false,sp500
+WFC,Wells Fargo,stock,Financials,price,true,false,sp500
+WM,Waste Management,stock,Industrials,price,true,false,sp500
+WMB,Williams Companies,stock,Energy,price,true,false,sp500
+WMT,Walmart,stock,Consumer Staples,price,true,true,sp500
+WRB,W. R. Berkley Corporation,stock,Financials,price,true,false,sp500
+WSM,"Williams-Sonoma, Inc.",stock,Consumer Discretionary,price,true,false,sp500
+WST,West Pharmaceutical Services,stock,Health Care,price,true,false,sp500
+WTW,Willis Towers Watson,stock,Financials,price,true,false,sp500
+WY,Weyerhaeuser,stock,Real Estate,price,true,false,sp500
+WYNN,Wynn Resorts,stock,Consumer Discretionary,price,true,false,sp500
+XEL,Xcel Energy,stock,Utilities,price,true,false,sp500
+XOM,Exxon Mobil,stock,Energy,price,true,true,sp500
+XYL,Xylem Inc.,stock,Industrials,price,true,false,sp500
+XYZ,"Block, Inc.",stock,Financials,price,true,false,sp500
+YUM,Yum! Brands,stock,Consumer Discretionary,price,true,false,sp500
+ZBH,Zimmer Biomet,stock,Health Care,price,true,false,sp500
+ZBRA,Zebra Technologies,stock,Technology,price,true,false,sp500
+ZS,Zscaler,stock,Technology,price,true,false,curated
+ZTS,Zoetis,stock,Health Care,price,true,false,sp500

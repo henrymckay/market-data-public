@@ -17,9 +17,21 @@ def test_when_markets_opens_then_tiles_charts_and_table_draw_without_error(
 
     assert page.locator("main h2").all_inner_texts()[0].startswith("Stocks by sector")
     assert page.get_by_text("S&P 500").first.is_visible()
-    assert page.locator("tbody tr").count() >= 80
+    assert page.locator("tbody tr").count() == 100
     assert page.locator("button[aria-label^='NVDA']").count() == 1
     assert page.errors == []
+
+
+def test_when_the_table_is_paged_then_next_shows_the_following_hundred(page, served):
+    _open(page, served)
+    nav = page.get_by_role("navigation", name="Pages of instruments")
+
+    assert nav.get_by_text("1\N{EN DASH}100 of").is_visible()
+    nav.get_by_role("button", name="Next").click()
+
+    assert nav.get_by_text("101\N{EN DASH}200 of").is_visible()
+    assert page.locator("tbody tr").count() == 100
+    assert nav.get_by_role("button", name="Previous").is_enabled()
 
 
 def test_when_the_period_changes_then_the_treemap_title_follows(page, served):

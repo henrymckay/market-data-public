@@ -10,6 +10,7 @@ def _fetch(tickers, bars, *failed, clock, sink, universe):
     return operate.fetch_bars(
         tickers,
         fetch=fake.fetching(bars, *failed, requests=len(tickers)),
+        full=False,
         now=clock,
         sink=sink,
         tolerance=0,
@@ -56,7 +57,7 @@ def test_when_an_instrument_fails_then_run_is_partial_and_others_store(
         universe=small_universe,
     )
 
-    assert sink.loads[0].answered == ("AAA",)
+    assert sink.loads[0].since.get_column("ticker").to_list() == ["AAA"]
     assert (run.outcome, run.failed_items) == (transform.Outcome.PARTIAL, 1)
 
 
@@ -70,7 +71,7 @@ def test_when_no_bar_of_an_instrument_validates_then_its_rows_are_kept(
     run = _fetch(["AAA", "BBB"], bars, clock=clock, sink=sink, universe=small_universe)
 
     load = sink.loads[0]
-    assert load.answered == ("AAA",)
+    assert load.since.get_column("ticker").to_list() == ["AAA"]
     assert load.rejected.height == 0
     assert (run.outcome, run.failed_items) == (transform.Outcome.PARTIAL, 1)
 

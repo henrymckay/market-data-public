@@ -38,3 +38,12 @@ def display_status(status: transform.Status) -> None:
     sys.stdout.write(
         polars.DataFrame(status.rows, schema=["key", "value"], orient="row").write_csv()
     )
+
+
+def display_changes(changes: transform.Changes) -> None:
+    """Write the counts of tickers a universe sync added and removed as CSV."""
+    sys.stdout.write(
+        polars.DataFrame(
+            {"added": [len(changes.added)], "removed": [len(changes.removed)]}
+        ).write_csv()
+    )

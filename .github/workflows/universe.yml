@@ -1,0 +1,52 @@
+name: universe
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  # Brings the S&P 500 rows of universe.csv in line with Wikipedia's list and
+  # commits the file to main when it changed (PLAN.md, D100).
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: universe
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - run: uv run --no-dev market-data-cli universe sync --log-level info
+      - name: Commit the CSV when it changed
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          path=src/market_data/data/transform/universe.csv
+          if git diff --quiet -- "$path"; then
+            echo "universe.csv is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$path"
+          git commit -m "chore(universe): sync S&P 500 members"
+          git push origin HEAD:main
+  # GitHub disables a public repository's schedules after 60 days without
+  # activity; enabling each workflow again through the API keeps them running
+  # (PLAN.md, D100). A workflow that does not exist yet is skipped.
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for workflow in nightly.yml watch.yml universe.yml; do
+            gh workflow enable "$workflow" --repo "$GITHUB_REPOSITORY" || echo "::notice::$workflow was not enabled"
+          done
