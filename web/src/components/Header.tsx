@@ -11,13 +11,23 @@ interface HeaderProps {
   onView: (view: View) => void;
   onSearch: () => void;
   freshness: Freshness | null;
+  /** True once the runs failed to load, so the chip says so rather than showing a skeleton. */
+  ageUnknown: boolean;
   lastDay: string | null;
   now: number;
 }
 
 const ICONS = { critical: CircleAlert, good: CircleCheck, warning: TriangleAlert } as const;
 
-function AgeChip({ freshness, lastDay }: { freshness: Freshness | null; lastDay: string | null; now: number }) {
+function AgeChip({ freshness, lastDay, unknown }: { freshness: Freshness | null; lastDay: string | null; unknown: boolean; now: number }) {
+  if (freshness === null && unknown) {
+    return (
+      <div role="status" className="flex min-w-0 items-center gap-1.5 text-sm text-text-2">
+        <TriangleAlert size={16} aria-hidden="true" className="shrink-0 text-warning-text" />
+        <span className="truncate">Age unknown</span>
+      </div>
+    );
+  }
   if (freshness === null) return <div className="skeleton h-5 w-40" aria-hidden="true" />;
   const tone = freshness.level === "failed" ? "critical" : freshness.level === "fresh" ? "good" : "warning";
   const Icon = ICONS[tone];
@@ -36,7 +46,7 @@ function AgeChip({ freshness, lastDay }: { freshness: Freshness | null; lastDay:
   );
 }
 
-export function Header({ view, onView, onSearch, freshness, lastDay, now }: HeaderProps) {
+export function Header({ view, onView, onSearch, freshness, ageUnknown, lastDay, now }: HeaderProps) {
   const { scheme, toggle } = useTheme();
   const next = scheme === "dark" ? "light" : "dark";
   return (
@@ -64,7 +74,7 @@ export function Header({ view, onView, onSearch, freshness, lastDay, now }: Head
             <span className="hidden sm:inline">Search</span>
             <kbd className="ml-auto hidden rounded bg-muted px-1.5 text-xs font-medium sm:inline">/</kbd>
           </button>
-          <AgeChip freshness={freshness} lastDay={lastDay} now={now} />
+          <AgeChip freshness={freshness} lastDay={lastDay} unknown={ageUnknown} now={now} />
           <button
             type="button"
             onClick={toggle}
