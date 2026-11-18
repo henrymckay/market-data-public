@@ -419,7 +419,7 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 - **D79 The `warm` job gets the nightly's start time as a job output, polls `/api/latest` every 30 s for up to 20 minutes until its `ended` is not before that time, then requests `/api/overview`, `/api/runs` and every `/api/bars/<slug>` four at a time**; a dispatched run took about seven minutes to see the new version (the cron's 15-minute step), all 91 responses were `200` and a cold miss took 2.5 to 3.3 s each (`^GSPC` 3.1 s); refines D60 *(proposed)*.
 - **D80 M7's workflows and fixes reached `main` by pushing a merge commit of the milestone branch**, as M3 and M4 did, since the approval named the PR's merge and pushes, and a schedule fires on `main` only *(proposed)*.
 - **D81 The docs page keeps the system font stack and gains a "Fields and units" section** over bundling Inter in the Worker: the page is one static string and a font file needs a bundler rule and about 47 KB in the script, for a page the dashboard does not use; the evaluator's round 1 asked for the units, which are now stated *(proposed)*.
-- **D82 The page prefetches an instrument's bars when its search result is highlighted, shows "Age unknown" when the runs fail to load and an empty card when no instrument is stored** after the live evaluator's round 1 (criteria 6 and 7); the instrument switch stays network-bound (Ideas I20) *(proposed)*.
+- **D82 The docs page has a description and an inline favicon, and the header chip no longer repeats itself; the page prefetches an instrument's bars when its search result is highlighted, shows "Age unknown" when the runs fail to load and an empty card when no instrument is stored** after the live evaluator's round 1 (criteria 6 and 7); the instrument switch stays network-bound (Ideas I20) *(proposed)*.
 
 ## Delivery
 
@@ -499,6 +499,8 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
   7. Answer Q4 and tell Claude the subdomain; Claude then runs M7 from step one of its list.
   — recommended: yes; blocks M7.
 - **Q6** Is a dashboard that trails MotherDuck by up to 15 minutes live enough (D53)? — the store changes once a night, so a read through the cache gives the same answer a direct read would except in the minutes after a run; a direct query per request is truly live but turns every page view, or a flood of them, into MotherDuck compute billed past Lite's 10 CU-hours with no ceiling; recommended: yes; blocks nothing, built on yes.
+
+- **Q7** Two live-evaluator findings after round 2 (M7) stay open: criterion 5, on a phone the Runs coverage table's Status column, the monthly calendar's last months and the Markets table's later periods sit beyond the card's own horizontal scroll with no cue (the page itself never scrolls sideways; `design-interface` lets a table scroll inside its card) — proposed: below 640 px hide the low-value columns and add an edge fade; and criterion 7, the first switch to an instrument takes 330 to 1,017 ms (median about 590 to 650) against R4's 500 ms because the whole history is 300 to 490 KB compressed over a variable link, while a cached switch takes 77 to 274 ms — proposed: a first body of the last few years with the rest fetched after (I14, which D55 rules out until the owner agrees to a `years` parameter) or a prefetch of the search's top results; recommended: yes to the first body; blocks nothing, M7 not ticked on R4's line until answered.
 
 ### Ideas
 
