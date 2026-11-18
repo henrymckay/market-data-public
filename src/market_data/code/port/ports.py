@@ -74,7 +74,7 @@ class Failure:
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
 class Fetched:
-    """What Yahoo sent for a run, as it arrived."""
+    """What Yahoo sent for a request; `requests` counts the whole run so far."""
 
     bars: polars.DataFrame
     failed: tuple[Failure, ...]
