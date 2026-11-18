@@ -4,10 +4,12 @@ import {
   CrosshairMode,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   PriceScaleMode,
   createChart,
   createSeriesMarkers,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type MouseEventParams,
@@ -19,11 +21,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FONT } from "./Chart";
 import { mix } from "../lib/color";
 import { formatDay, formatFixed, formatInteger, formatPercent, priceDigits } from "../lib/format";
+import { EVENT_SHORT, type Mark, type Timeframe } from "../lib/signals";
 import { movingAverage, rangeStart, startIndex, type Range, type Series } from "../lib/stats";
 import type { Tokens } from "../lib/theme";
+import type { Pivot } from "../lib/types";
+
+/** The most swing labels drawn at once; past it the oldest in view are left off so the rest stay legible. */
+export const MAX_SWING_LABELS = 150;
+
+export interface Structure {
+  timeframe: Timeframe;
+  pivots: readonly Pivot[];
+  marks: readonly Mark[];
+  /** The signal a push opened: its level and stop are drawn and the chart scrolls to it. */
+  selected: Mark | null;
+}
 
 interface CandleChartProps {
   series: Series;
+  structure: Structure;
   assetClass: string;
   tokens: Tokens;
   range: Range;
@@ -43,14 +59,15 @@ const layout = (t: Tokens) => ({
   timeScale: { borderColor: t.grid },
 });
 
-/** Candles with volume in a second pane, moving averages, a log scale and a crosshair legend. */
-export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200, log, height, label }: CandleChartProps) {
+/** Candles with volume in a second pane, moving averages, swings, signals, a log scale and a crosshair legend. */
+export function CandleChart({ series, structure, assetClass, tokens: t, range, ma50, ma200, log, height, label }: CandleChartProps) {
   const element = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candles = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volume = useRef<ISeriesApi<"Histogram"> | null>(null);
   const lines = useRef<{ fifty: ISeriesApi<"Line">; two: ISeriesApi<"Line"> } | null>(null);
   const markers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const levels = useRef<IPriceLine[]>([]);
   const [hover, setHover] = useState<number | null>(null);
   const tokens = useRef(t);
   useEffect(() => {
@@ -81,6 +98,7 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
       volume.current = null;
       lines.current = null;
       markers.current = null;
+      levels.current = [];
     };
   }, []);
 
@@ -104,12 +122,6 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
       Array.from(movingAverage(closes, window), (value, i) => ({ time: series.days[i]!, value })).filter((point) => !Number.isNaN(point.value));
     lines.current!.fifty.setData(average(50));
     lines.current!.two.setData(average(200));
-    const marks: SeriesMarker<Time>[] = [];
-    for (let i = 0; i < series.days.length; i += 1) {
-      if (series.split[i]! > 0) marks.push({ color: tokens.current.series[1]!, position: "aboveBar", shape: "square", text: "Split", time: series.days[i]! });
-      else if (series.dividend[i]! > 0) marks.push({ color: tokens.current.series[2]!, position: "belowBar", shape: "circle", size: 0.6, time: series.days[i]! });
-    }
-    markers.current!.setMarkers(marks);
     if (withVolume) {
       if (volume.current === null) {
         volume.current = instance.addSeries(HistogramSeries, { lastValueVisible: false, priceFormat: { type: "volume" }, priceLineVisible: false }, 1);
@@ -137,6 +149,51 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
   }, [t, series, withVolume]);
 
   useEffect(() => {
+    const last = series.days[series.days.length - 1]!;
+    const start = rangeStart(range, last) ?? "";
+    const visible = structure.pivots.filter((pivot) => pivot.label !== null && pivot.day >= start && indexOf.has(pivot.day)).slice(-MAX_SWING_LABELS);
+    const marks: SeriesMarker<Time>[] = [];
+    for (let i = 0; i < series.days.length; i += 1) {
+      if (series.split[i]! > 0) marks.push({ color: t.series[1]!, position: "aboveBar", shape: "square", text: "Split", time: series.days[i]! });
+      else if (series.dividend[i]! > 0) marks.push({ color: t.series[2]!, position: "belowBar", shape: "circle", size: 0.6, time: series.days[i]! });
+    }
+    for (const pivot of visible) {
+      marks.push({ color: t.text2, position: pivot.kind === "high" ? "aboveBar" : "belowBar", shape: "circle", size: 0.3, text: pivot.label!, time: pivot.day });
+    }
+    for (const mark of structure.marks) {
+      if (!indexOf.has(mark.day)) continue;
+      const up = mark.direction === "up";
+      marks.push({
+        color: up ? t.upText : t.downText,
+        position: up ? "belowBar" : "aboveBar",
+        shape: up ? "arrowUp" : "arrowDown",
+        size: structure.selected?.id === mark.id ? 1.3 : 1,
+        text: EVENT_SHORT[mark.event],
+        time: mark.day,
+      });
+    }
+    marks.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    markers.current!.setMarkers(marks);
+    element.current!.dataset.signals = String(structure.marks.filter((mark) => indexOf.has(mark.day)).length);
+    element.current!.dataset.swings = String(visible.length);
+  }, [series, structure, range, t, indexOf]);
+
+  useEffect(() => {
+    const body = candles.current!;
+    for (const line of levels.current) body.removePriceLine(line);
+    levels.current = [];
+    const picked = structure.selected;
+    element.current!.dataset.lines = "0";
+    if (picked === null) return;
+    const single = picked.level === picked.stop;
+    levels.current.push(body.createPriceLine({ axisLabelVisible: true, color: t.accent, lineStyle: LineStyle.Dashed, lineWidth: 1, price: picked.level, title: "Level" }));
+    if (!single) {
+      levels.current.push(body.createPriceLine({ axisLabelVisible: true, color: picked.direction === "up" ? t.down : t.up, lineStyle: LineStyle.Dotted, lineWidth: 1, price: picked.stop, title: "Invalid" }));
+    }
+    element.current!.dataset.lines = String(levels.current.length);
+  }, [structure.selected, t, series]);
+
+  useEffect(() => {
     lines.current!.fifty.applyOptions({ visible: ma50 });
   }, [ma50]);
   useEffect(() => {
@@ -150,11 +207,17 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
     const last = series.days[series.days.length - 1]!;
     const start = rangeStart(range, last);
     const scale = chart.current!.timeScale();
-    if (start === null) scale.fitContent();
-    else scale.setVisibleRange({ from: series.days[startIndex(series.days, start)]! as Time, to: last as Time });
-  }, [range, series]);
+    let from = start === null ? null : series.days[startIndex(series.days, start)]!;
+    const at = structure.selected === null ? undefined : indexOf.get(structure.selected.day);
+    if (at !== undefined) {
+      const lead = series.days[Math.max(0, at - 20)]!;
+      if (from !== null && lead < from) from = lead;
+    }
+    if (from === null) scale.fitContent();
+    else scale.setVisibleRange({ from: from as Time, to: last as Time });
+  }, [range, series, structure.selected, indexOf]);
 
-  const at = hover ?? series.days.length - 1;
+  const at = Math.min(hover ?? series.days.length - 1, series.days.length - 1);
   const previous = Math.max(0, at - 1);
   const change = series.close[at]! / series.close[previous]! - 1;
   const price = (n: number): string => formatFixed(n, digits);

@@ -6,9 +6,16 @@ import {
   formatDay,
   formatMoment,
   formatPercent,
+  formatPoints,
   formatPrice,
   formatTileValue,
 } from "./format";
+
+describe("formatPoints", () => {
+  it("signs a difference of shares in percentage points", () => {
+    expect([formatPoints(0.012), formatPoints(-0.0251), formatPoints(0.00001)]).toEqual(["+1.2 pp", "−2.5 pp", "0.0 pp"]);
+  });
+});
 
 describe("formatPercent", () => {
   it("signs a gain and a loss to two places", () => {

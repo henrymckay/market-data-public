@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TIMEOUT_MS, loadBars, loadLatest, loadOverview, loadRuns, toInstrument, toRun, toSeries } from "./data";
+import { TIMEOUT_MS, loadBars, loadLatest, loadOverview, loadRuns, loadSignals, loadStats, toBars, toInstrument, toRun, toSeries } from "./data";
 
 const OVERVIEW_ROW = {
   asset_class: "stock",
@@ -43,6 +43,19 @@ const BARS = {
   split: [0, 0, 0],
   ticker: "AAA",
   volume: [10, 20, 30],
+};
+
+const STRUCTURE = {
+  ...BARS,
+  monthly: { adj_close: [3], close: [3], day: ["2026-01-01"], high: [4], low: [1], open: [1], volume: [60] },
+  pivots: [
+    { confirmed: "2026-01-07", day: "2026-01-05", kind: "high", label: null, price: 2, timeframe: "d" },
+    { confirmed: "2026-01-12", day: "2026-01-06", kind: "low", label: "HL", price: 1, timeframe: "w" },
+  ],
+  signals: [
+    { day: "2026-01-06", direction: "up", event: "break_up", grade: "A", held_to_date: true, id: "AAA|d|break_up|2026-01-06", known: "2026-01-06", level: 2, return_to_date: 0.5, score: 3, stop: 1, timeframe: "d" },
+  ],
+  weekly: { adj_close: [3], close: [3], day: ["2026-01-05"], high: [4], low: [1], open: [1], volume: [60] },
 };
 
 const json = (body: unknown, status = 200): Response =>
@@ -92,6 +105,32 @@ describe("what the API returns", () => {
   });
 });
 
+describe("the structure on the bars body", () => {
+  it("reads weekly and monthly bars as series with no dividends or splits", () => {
+    const bars = toBars(STRUCTURE);
+
+    expect(bars.weekly.days).toEqual(["2026-01-05"]);
+    expect(bars.monthly.close[0]).toBe(3);
+    expect([bars.weekly.dividend[0], bars.weekly.split[0]]).toEqual([0, 0]);
+  });
+  it("reads swings and signals, a first swing keeping a null label", () => {
+    const bars = toBars(STRUCTURE);
+
+    expect(bars.pivots.map((pivot) => [pivot.timeframe, pivot.kind, pivot.label])).toEqual([["d", "high", null], ["w", "low", "HL"]]);
+    expect(bars.marks[0]).toMatchObject({ event: "break_up", held: true, level: 2, since: 0.5, stop: 1, timeframe: "d" });
+  });
+  it("reads a body from before the structure as empty timeframes", () => {
+    const bars = toBars(BARS);
+
+    expect([bars.weekly.days, bars.monthly.days, bars.pivots, bars.marks]).toEqual([[], [], [], []]);
+  });
+  it("reads the trend per timeframe from the overview, unknown states as none known", () => {
+    const aaa = toInstrument({ ...OVERVIEW_ROW, trend_d: "up", trend_m: "turning_down", trend_w: "bogus" });
+
+    expect(aaa.trend).toEqual({ d: "up", m: "turning_down", w: null });
+  });
+});
+
 describe("fetching", () => {
   it("asks the API's origin for the overview, with no stray slash, and reads it", async () => {
     answer(() => json([OVERVIEW_ROW]));
@@ -114,6 +153,17 @@ describe("fetching", () => {
     await loadBars("aaa");
     await loadBars("aaa", "v2");
     expect(calls).toEqual(["https://api.example.test/api/bars/aaa", "https://api.example.test/api/bars/aaa?v=v2"]);
+  });
+  it("fetches the signals and the base rates once per version and reads them", async () => {
+    answer((url) => json(url.includes("/signals") ? [{ asset_class: "stock", day: "2026-11-17", direction: "up", event: "break_up", grade: "A", id: "x", known: "2026-11-17", level: 1, name: "Alpha", score: 3, slug: "aaa", stop: 0.5, ticker: "AAA", timeframe: "d" }] : [{ asset_class: "all", event: "break_up", grade: "all", horizon: 20, n: 9, timeframe: "d" }]));
+
+    const signals = await loadSignals("v1");
+    await loadSignals("v1");
+    const stats = await loadStats("v1");
+    await loadStats("v1");
+
+    expect(calls).toEqual(["https://api.example.test/api/signals?v=v1", "https://api.example.test/api/stats?v=v1"]);
+    expect([signals[0]!.ticker, stats[0]!.n]).toEqual(["AAA", 9]);
   });
   it("rejects with the status and the API's own message on a failure", async () => {
     answer(() => json({ code: "store_unavailable", error: "MotherDuck did not answer; try again in a minute." }, 503));
