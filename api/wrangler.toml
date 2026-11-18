@@ -1,0 +1,19 @@
+name = "market-data-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-18"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[vars]
+MOTHERDUCK_HOST = "pg.eu-west-1-aws.motherduck.com"
+MOTHERDUCK_DATABASE = "market_data"
+ALLOWED_ORIGIN = "https://henrymckay.github.io"
+
+[secrets]
+required = ["MOTHERDUCK_TOKEN"]
+
+[[kv_namespaces]]
+binding = "CACHE"
+
+[triggers]
+crons = ["*/15 * * * *"]

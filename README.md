@@ -56,6 +56,18 @@ uv run npm --prefix web run preview    # http://127.0.0.1:4173/
 Four screens: Markets, Ticker, Compare and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
 `web/public/data/` is generated and git-ignored.
 
+## API
+
+`api/` is a Cloudflare Worker that answers the dashboard's four reads (`/api/latest`, `/api/overview`, `/api/runs`, `/api/bars/{slug}`) from MotherDuck through a cache, with a docs page at `/`; it is built and tested but not deployed yet.
+Run it locally against the store, the token going from the keychain into that one process and nowhere else:
+
+```bash
+cd api && uv run npm ci
+CLOUDFLARE_INCLUDE_PROCESS_ENV=true MOTHERDUCK_TOKEN="$(security find-generic-password -a "$USER" -s motherduck-token -w)" uv run npm run dev   # http://127.0.0.1:8787/
+```
+
+`compute` writes the `overview` table the Worker reads, so run it (or `nightly`) once before the first request.
+
 ## Develop
 
 ```bash
@@ -64,6 +76,7 @@ uv run ruff check && uv run ruff format --check
 uv run pyright
 uv run pytest -m real   # one run against Yahoo itself
 uv run npm --prefix web run typecheck && uv run npm --prefix web run lint && uv run npm --prefix web test
+uv run npm --prefix api run typecheck && uv run npm --prefix api run lint && uv run npm --prefix api test
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" uv run pytest -m slow   # browser smokes over web/dist; build first
 ```
 
