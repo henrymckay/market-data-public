@@ -107,7 +107,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
   const calendar = useMemo(() => (series === null ? null : monthlyReturns(series.days, series.adj)), [series]);
 
   if (data.overview.status === "error") {
-    return <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list. Other screens may still work; tonight&rsquo;s run rewrites the file.</ErrorNote>;
+    return <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list: the API didn&rsquo;t answer. Other screens may still work.</ErrorNote>;
   }
   if (missing) {
     return (
@@ -156,7 +156,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
         {instrument !== undefined && !hasBars ? (
           <EmptyNote>No bars stored for {instrument.ticker} yet.</EmptyNote>
         ) : barsFailed ? (
-          <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>Couldn&rsquo;t load {route.ticker}&rsquo;s prices. Other screens still work; tonight&rsquo;s run rewrites the file.</ErrorNote>
+          <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>Couldn&rsquo;t load {route.ticker}&rsquo;s prices: the API didn&rsquo;t answer. Other screens still work.</ErrorNote>
         ) : series === null || instrument === undefined ? (
           <Block height={520} />
         ) : (

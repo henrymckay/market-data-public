@@ -1,37 +1,30 @@
-import { parquetReadObjects } from "hyparquet";
-
 import type { Instrument, Latest, Run } from "./types";
 import type { Series } from "./stats";
 
-const base = `${import.meta.env.BASE_URL}data/`;
+/** How long a request may take before the page calls the API unreachable. */
+export const TIMEOUT_MS = 30_000;
 
 type Row = Record<string, unknown>;
 
 const num = (value: unknown): number | null => {
-  if (value === null || value === undefined) return null;
-  const n = typeof value === "bigint" ? Number(value) : (value as number);
-  return Number.isFinite(n) ? n : null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value;
 };
 
-/** A parquet date or timestamp as an ISO day (A9: hyparquet returns Date objects). */
-export const isoDay = (value: unknown): string | null => {
-  if (value === null || value === undefined) return null;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === "string") return value.slice(0, 10);
-  if (typeof value === "number" || typeof value === "bigint") return new Date(Number(value)).toISOString().slice(0, 10);
-  return null;
+/** The API's date or timestamp text as an ISO day. */
+export const isoDay = (value: unknown): string | null => (typeof value === "string" ? value.slice(0, 10) : null);
+
+const apiBase = (): string => {
+  const base = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+  if (base === "") throw new Error("VITE_API_URL was not set when this page was built");
+  return base;
 };
 
-const isoMoment = (value: unknown): string => {
-  if (value instanceof Date) return value.toISOString().replace(/\.\d+Z$/, "Z");
-  return String(value);
-};
-
-const fetchBuffer = async (name: string, version?: string): Promise<ArrayBuffer> => {
+const fetchJson = async (path: string, init?: RequestInit, version?: string): Promise<unknown> => {
   const suffix = version === undefined ? "" : `?v=${encodeURIComponent(version)}`;
-  const response = await fetch(`${base}${name}${suffix}`);
-  if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
-  return response.arrayBuffer();
+  const response = await fetch(`${apiBase()}/api/${path}${suffix}`, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+  return response.json();
 };
 
 const METRIC_COLUMNS = new Set([
@@ -62,42 +55,40 @@ export const toInstrument = (row: Row): Instrument => {
 
 export const toRun = (row: Row): Run => ({
   day: isoDay(row.day) ?? "",
-  ended: isoMoment(row.ended),
+  ended: String(row.ended),
   failedItems: num(row.failed_items) ?? 0,
   outcome: row.outcome as Run["outcome"],
   rejected: num(row.rejected) ?? 0,
   requests: num(row.requests) ?? 0,
   rows: num(row.rows) ?? 0,
   source: String(row.source),
-  started: isoMoment(row.started),
+  started: String(row.started),
 });
 
-const column = (rows: Row[], name: string): Float64Array =>
-  Float64Array.from(rows, (row) => num(row[name]) ?? Number.NaN);
+const column = (values: unknown, fill: number): Float64Array =>
+  Float64Array.from(Array.isArray(values) ? values : [], (value) => num(value) ?? fill);
 
-export const toSeries = (rows: Row[]): Series => ({
-  adj: column(rows, "adj_close"),
-  close: column(rows, "close"),
-  days: rows.map((row) => isoDay(row.day) ?? ""),
-  dividend: Float64Array.from(rows, (row) => num(row.dividend) ?? 0),
-  high: column(rows, "high"),
-  low: column(rows, "low"),
-  open: column(rows, "open"),
-  split: Float64Array.from(rows, (row) => num(row.split) ?? 0),
-  volume: column(rows, "volume"),
+/** The `/api/bars/{slug}` columns as the typed arrays the charts read. */
+export const toSeries = (body: Row): Series => ({
+  adj: column(body.adj_close, Number.NaN),
+  close: column(body.close, Number.NaN),
+  days: (Array.isArray(body.day) ? body.day : []).map((day) => isoDay(day) ?? ""),
+  dividend: column(body.dividend, 0),
+  high: column(body.high, Number.NaN),
+  low: column(body.low, Number.NaN),
+  open: column(body.open, Number.NaN),
+  split: column(body.split, 0),
+  volume: column(body.volume, Number.NaN),
 });
 
 export const loadOverview = async (version?: string): Promise<Instrument[]> =>
-  (await parquetReadObjects({ file: await fetchBuffer("overview.parquet", version) })).map(toInstrument);
+  ((await fetchJson("overview", undefined, version)) as Row[]).map(toInstrument);
 
 export const loadRuns = async (version?: string): Promise<Run[]> =>
-  (await parquetReadObjects({ file: await fetchBuffer("runs.parquet", version) })).map(toRun);
+  ((await fetchJson("runs", undefined, version)) as Row[]).map(toRun);
 
-export const loadLatest = async (): Promise<Latest | null> => {
-  const response = await fetch(`${base}latest.json`, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`latest.json: HTTP ${response.status}`);
-  return (await response.json()) as Latest | null;
-};
+/** The last stored run; read afresh each time, since it is how the page learns of a new version. */
+export const loadLatest = async (): Promise<Latest | null> => (await fetchJson("latest", { cache: "no-cache" })) as Latest | null;
 
 const barCache = new Map<string, Promise<Series>>();
 
@@ -106,9 +97,7 @@ export const loadBars = (slug: string, version?: string): Promise<Series> => {
   const key = `${version ?? ""}/${slug}`;
   let pending = barCache.get(key);
   if (pending === undefined) {
-    pending = fetchBuffer(`bars/${slug}.parquet`, version)
-      .then((file) => parquetReadObjects({ file }))
-      .then(toSeries);
+    pending = fetchJson(`bars/${slug}`, undefined, version).then((body) => toSeries(body as Row));
     barCache.set(key, pending);
     pending.catch(() => barCache.delete(key));
   }

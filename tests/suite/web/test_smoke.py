@@ -1,5 +1,3 @@
-import pathlib
-
 import pytest
 
 pytestmark = pytest.mark.slow
@@ -85,7 +83,7 @@ def test_when_runs_opens_then_the_last_run_and_coverage_show(page, served):
 def test_when_a_bars_file_fails_then_the_card_says_so_and_the_page_still_works(
     page, served
 ):
-    page.route("**/bars/aapl.parquet*", lambda route: route.abort())
+    page.route("**/api/bars/aapl*", lambda route: route.abort())
 
     _open(page, served, "?view=ticker&t=AAPL")
 
@@ -100,18 +98,68 @@ def test_when_a_bars_file_fails_then_the_card_says_so_and_the_page_still_works(
 def test_when_there_are_no_runs_then_runs_says_the_first_nightly_writes_here(
     page, served
 ):
-    import polars
+    page.route(
+        "**/api/runs*",
+        lambda route: route.fulfill(
+            body="[]",
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        ),
+    )
 
-    empty = pathlib.Path(served[1]) / "data" / "runs.parquet"
-    original = empty.read_bytes()
-    polars.read_parquet(empty).head(0).write_parquet(empty, compression="snappy")
-    try:
-        _open(page, served, "?view=runs")
-        assert page.get_by_text(
-            "No runs yet — the first nightly writes here."
-        ).is_visible()
-    finally:
-        empty.write_bytes(original)
+    _open(page, served, "?view=runs")
+
+    assert page.get_by_text(
+        "No runs yet \u2014 the first nightly writes here."
+    ).is_visible()
+
+
+def test_when_the_api_is_down_then_the_page_says_so_and_a_retry_recovers(page, served):
+    down = {"on": True}
+
+    def handler(route):
+        if down["on"]:
+            route.abort()
+        else:
+            route.continue_()
+
+    page.route("**/api/overview*", handler)
+
+    _open(page, served)
+    alert = page.get_by_role("alert").get_by_text("the API didn\u2019t answer").first
+    assert alert.is_visible()
+
+    down["on"] = False
+    page.get_by_role("button", name="Try again").first.click()
+    page.wait_for_selector("tbody tr")
+
+    assert page.locator("tbody tr").count() >= 80
+
+
+def test_when_the_api_is_slow_then_the_page_says_it_is_still_loading(page, served):
+    held = []
+    page.route("**/api/overview*", lambda route: held.append(route))
+
+    page.goto(served[0])
+    page.get_by_role("status").get_by_text("Still loading").wait_for(timeout=10_000)
+    for route in held:
+        route.continue_()
+    page.wait_for_selector(_READY, timeout=30_000)
+
+    assert page.get_by_text("Still loading").count() == 0
+
+
+def test_when_a_ticker_opens_then_data_requests_go_to_the_api_not_parquet(page, served):
+    urls: list[str] = []
+    page.on("request", lambda request: urls.append(request.url))
+
+    _open(page, served, "?view=ticker&t=AAPL")
+
+    data = [url for url in urls if "/api/" in url or ".parquet" in url]
+    assert data
+    assert all(url.startswith("http://127.0.0.1:8788/api/") for url in data)
+    assert not [url for url in urls if ".parquet" in url]
+    assert "/api/bars/aapl" in "".join(data)
 
 
 def test_when_the_scheme_is_toggled_then_it_is_kept_across_a_reload(page, served):

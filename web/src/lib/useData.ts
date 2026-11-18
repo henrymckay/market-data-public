@@ -9,14 +9,14 @@ export interface Data {
   overview: Loaded<Instrument[]>;
   runs: Loaded<Run[]>;
   latest: Latest | null;
-  /** The run the files belong to, or undefined for the first load; keys per-run caches. */
+  /** The run the data belongs to, or undefined for the first load; keys per-run caches. */
   version: string | undefined;
   reload: () => void;
 }
 
 const POLL_MS = 300_000;
 
-/** The site data, refetched when the latest run's `ended` changes. */
+/** The API's data, refetched when the latest run's `ended` changes. */
 export const useData = (): Data => {
   const [overview, setOverview] = useState<Loaded<Instrument[]>>({ status: "loading" });
   const [runs, setRuns] = useState<Loaded<Run[]>>({ status: "loading" });

@@ -1,45 +1,141 @@
-import { readFileSync } from "node:fs";
-import { parquetReadObjects } from "hyparquet";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { toInstrument, toRun, toSeries } from "./data";
+import { TIMEOUT_MS, loadBars, loadLatest, loadOverview, loadRuns, toInstrument, toRun, toSeries } from "./data";
 
-const read = async (name: string) => {
-  const bytes = readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
-  const file = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  return parquetReadObjects({ file });
+const OVERVIEW_ROW = {
+  asset_class: "stock",
+  bar_count: 70,
+  first_day: "2026-01-05",
+  last_close: 169,
+  last_day: "2026-03-15",
+  name: "Alpha",
+  quote_type: "price",
+  rejected: 2,
+  return_1d: 0.01,
+  return_5y: null,
+  sector: "Tech",
+  slug: "aaa",
+  spark: [1, 2, 3],
+  ticker: "AAA",
 };
 
-describe("files the export wrote", () => {
-  it("reads dates as ISO days and counts as numbers (A9)", async () => {
-    const rows = (await read("overview.parquet")).map(toInstrument);
-    const aapl = rows.find((row) => row.ticker === "AAPL")!;
-    expect(aapl.firstDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(typeof aapl.barCount).toBe("number");
-    expect(typeof aapl.rejected).toBe("number");
-    expect(aapl.spark).toHaveLength(63);
-    expect(aapl.slug).toBe("aapl");
+const RUN_ROW = {
+  day: "2026-11-16",
+  ended: "2026-11-17T02:19:41Z",
+  failed_items: 0,
+  last_day: "2026-11-16",
+  outcome: "stored",
+  rejected: 2,
+  requests: 90,
+  rows: 803114,
+  source: "yahoo",
+  started: "2026-11-17T02:17:22Z",
+};
+
+const BARS = {
+  adj_close: [1.5, null, 3],
+  close: [1.5, 2, 3],
+  day: ["2026-01-05", "2026-01-06", "2026-01-07"],
+  dividend: [0, 0.5, null],
+  high: [2, 3, 4],
+  low: [1, 1, 2],
+  open: [1, 2, 3],
+  split: [0, 0, 0],
+  ticker: "AAA",
+  volume: [10, 20, 30],
+};
+
+const json = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" }, status });
+
+let calls: string[] = [];
+const answer = (reply: (url: string) => Response | Promise<Response>) => {
+  calls = [];
+  vi.stubGlobal("fetch", (input: string | URL) => {
+    const url = String(input);
+    calls.push(url);
+    return Promise.resolve(reply(url));
   });
-  it("keeps an instrument with no bars, with nulls", async () => {
-    const rows = (await read("overview.parquet")).map(toInstrument);
-    const dead = rows.find((row) => row.ticker === "ZZZBOGUS1")!;
-    expect(dead.barCount).toBe(0);
-    expect(dead.spark).toBeNull();
-    expect(dead.metrics.last_close).toBeNull();
+};
+
+beforeEach(() => {
+  vi.stubEnv("VITE_API_URL", "https://api.example.test/");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+describe("what the API returns", () => {
+  it("reads an overview row into an instrument", () => {
+    const aaa = toInstrument(OVERVIEW_ROW);
+    expect(aaa).toMatchObject({ barCount: 70, firstDay: "2026-01-05", lastDay: "2026-03-15", slug: "aaa", spark: [1, 2, 3] });
+    expect(aaa.metrics).toEqual({ last_close: 169, return_1d: 0.01, return_5y: null });
   });
-  it("marks a yield as one", async () => {
-    const rows = (await read("overview.parquet")).map(toInstrument);
-    expect(rows.find((row) => row.ticker === "^TNX")!.quoteType).toBe("yield");
+  it("keeps an instrument with no bars, with nulls", () => {
+    const dead = toInstrument({ ...OVERVIEW_ROW, bar_count: 0, first_day: null, last_close: null, spark: null });
+    expect([dead.barCount, dead.firstDay, dead.spark, dead.metrics.last_close]).toEqual([0, null, null, null]);
   });
-  it("reads bars into aligned arrays", async () => {
-    const series = toSeries(await read("bars.parquet"));
-    expect(series.days).toHaveLength(40);
-    expect(series.adj).toHaveLength(40);
-    expect(series.days[0]! < series.days[39]!).toBe(true);
+  it("marks a yield as one", () => {
+    expect(toInstrument({ ...OVERVIEW_ROW, quote_type: "yield" }).quoteType).toBe("yield");
   });
-  it("reads runs with ISO moments", async () => {
-    const run = toRun((await read("runs.parquet"))[0]!);
-    expect(run.ended).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
-    expect(typeof run.rows).toBe("number");
+  it("reads a run's counts and moments", () => {
+    expect(toRun(RUN_ROW)).toMatchObject({ day: "2026-11-16", ended: "2026-11-17T02:19:41Z", failedItems: 0, rows: 803114 });
+  });
+  it("reads bars as aligned arrays, a null price as NaN and a null dividend as 0", () => {
+    const series = toSeries(BARS);
+    expect(series.days).toEqual(BARS.day);
+    expect(Number.isNaN(series.adj[1])).toBe(true);
+    expect(series.dividend[2]).toBe(0);
+    expect(series.volume[2]).toBe(30);
+  });
+});
+
+describe("fetching", () => {
+  it("asks the API's origin for the overview, with no stray slash, and reads it", async () => {
+    answer(() => json([OVERVIEW_ROW]));
+    const rows = await loadOverview();
+    expect(calls).toEqual(["https://api.example.test/api/overview"]);
+    expect(rows[0]!.ticker).toBe("AAA");
+  });
+  it("adds the data version to bust the browser's cache", async () => {
+    answer(() => json([RUN_ROW]));
+    await loadRuns("2026-11-17T02:19:41Z");
+    expect(calls).toEqual(["https://api.example.test/api/runs?v=2026-11-17T02%3A19%3A41Z"]);
+  });
+  it("reads a null latest", async () => {
+    answer(() => json(null));
+    expect(await loadLatest()).toBeNull();
+  });
+  it("fetches an instrument's bars once a session and again for a new version", async () => {
+    answer(() => json(BARS));
+    await loadBars("aaa");
+    await loadBars("aaa");
+    await loadBars("aaa", "v2");
+    expect(calls).toEqual(["https://api.example.test/api/bars/aaa", "https://api.example.test/api/bars/aaa?v=v2"]);
+  });
+  it("rejects with the status and the API's own message on a failure", async () => {
+    answer(() => json({ code: "store_unavailable", error: "MotherDuck did not answer; try again in a minute." }, 503));
+    await expect(loadOverview()).rejects.toThrow("503");
+  });
+  it("forgets a failed bars fetch so a retry asks again", async () => {
+    answer(() => json({ code: "x", error: "x" }, 503));
+    await expect(loadBars("bbb")).rejects.toThrow();
+    answer(() => json(BARS));
+    await expect(loadBars("bbb")).resolves.toBeDefined();
+  });
+  it("rejects with an instruction when the build had no API address", async () => {
+    vi.stubEnv("VITE_API_URL", "");
+    answer(() => json([]));
+    await expect(loadOverview()).rejects.toThrow("VITE_API_URL");
+    expect(calls).toEqual([]);
+  });
+  it("limits each request to the timeout, so a silent API ends in an error", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    answer(() => json([]));
+    await loadOverview();
+    expect(timeout).toHaveBeenCalledWith(TIMEOUT_MS);
+    timeout.mockRestore();
   });
 });

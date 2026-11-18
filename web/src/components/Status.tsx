@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { cn } from "../lib/cn";
 
@@ -46,4 +46,19 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 
 export function Block({ height, className }: { height: number; className?: string }) {
   return <div className={cn("skeleton w-full", className)} style={{ height }} aria-hidden="true" />;
+}
+
+/** Says a load is still going once it has run `afterMs`; mount it only while loading. */
+export function SlowNote({ afterMs = 3_000 }: { afterMs?: number }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), afterMs);
+    return () => clearTimeout(timer);
+  }, [afterMs]);
+  if (!slow) return null;
+  return (
+    <p role="status" className="mb-3 text-sm text-muted-foreground">
+      Still loading. The first request after a new run can take a few seconds.
+    </p>
+  );
 }
