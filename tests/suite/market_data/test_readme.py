@@ -7,6 +7,7 @@ import pytest
 
 from market_data.code import port, transform
 from market_data.code.adapt import motherduck
+from pytest_ import fake
 
 _README = pathlib.Path(__file__).parents[3] / "README.md"
 _DAY = datetime.date(2026, 11, 16)
@@ -22,7 +23,7 @@ def store(tmp_path, make_bars, small_universe):
     store = motherduck.Store(motherduck.connect(str(tmp_path / "market.duckdb")))
     store.replace(
         port.Load(
-            answered=("AAA",),
+            since=fake.whole(("AAA",)),
             bars=make_bars(("AAA", _DAY, {"close": 10.0})),
             fetched=_STARTED,
             rejected=polars.DataFrame([], schema=port.REJECTED),

@@ -93,3 +93,25 @@ def test_when_an_instrument_has_no_bars_then_it_stays_with_nulls_and_zero_count(
 
 def test_when_a_return_is_absent_then_its_column_is_null_not_missing(overview):
     assert "return_5y" in overview.columns
+
+
+def test_when_build_overview_then_figures_keep_seven_digits_and_the_spark_five(
+    small_universe, no_rejections, make_bars
+):
+    bars = make_bars(
+        *(
+            ("AAA", day, {"adj_close": 100.0 / 3 + i, "close": 100.0 / 3 + i})
+            for i, day in enumerate(_days(70))
+        )
+    )
+
+    overview = transform.build_overview(
+        bars=bars,
+        metrics=transform.build_metrics(bars),
+        rejected=no_rejections,
+        tickers=small_universe,
+    ).filter(polars.col("ticker").eq("AAA"))
+
+    assert overview.item(0, "last_close") == pytest.approx(100.0 / 3 + 69, rel=1e-6)
+    assert len(repr(overview.item(0, "last_close"))) <= 10
+    assert max(len(repr(value)) for value in overview.item(0, "spark")) <= 8

@@ -40,9 +40,7 @@ class Stub:
             return 200, self._body(name)
         if path.startswith(_PREFIX):
             slug = path.removeprefix(_PREFIX)
-            tickers = {
-                row["slug"]: row["ticker"] for row in json.loads(self._body("overview"))
-            }
+            tickers = json.loads(self._body("slugs"))
             if slug in tickers:
                 return 200, self._body("bars", tickers[slug])
             return _error(404, f"No instrument with slug '{slug}'")

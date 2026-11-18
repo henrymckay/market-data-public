@@ -10,11 +10,11 @@ from market_data.code.adapt import yahoo
 
 
 def _answering(frame):
-    return lambda _ticker: frame
+    return lambda _ticker, _period: frame
 
 
 def _raising(failure):
-    def history(_ticker):
+    def history(_ticker, _period):
         raise failure
 
     return history
@@ -22,7 +22,7 @@ def _raising(failure):
 
 def test_when_fetch_bars_then_a_recorded_response_maps_to_the_bars_schema(aapl_frame):
     fetched = yahoo.fetch_bars(
-        ["AAPL"], history=_answering(aapl_frame), requests=yahoo.Requests()
+        ["AAPL"], "max", history=_answering(aapl_frame), requests=yahoo.Requests()
     )
 
     assert fetched.bars.schema == port.BARS
@@ -33,7 +33,7 @@ def test_when_fetch_bars_then_a_recorded_response_maps_to_the_bars_schema(aapl_f
 
 def test_when_fetch_bars_then_day_is_the_exchange_local_date(aapl_frame):
     fetched = yahoo.fetch_bars(
-        ["AAPL"], history=_answering(aapl_frame), requests=yahoo.Requests()
+        ["AAPL"], "max", history=_answering(aapl_frame), requests=yahoo.Requests()
     )
 
     expected = [timestamp.date() for timestamp in aapl_frame.index]
@@ -42,7 +42,7 @@ def test_when_fetch_bars_then_day_is_the_exchange_local_date(aapl_frame):
 
 def test_when_fetch_bars_then_dividends_and_closes_come_through(aapl_frame):
     fetched = yahoo.fetch_bars(
-        ["AAPL"], history=_answering(aapl_frame), requests=yahoo.Requests()
+        ["AAPL"], "max", history=_answering(aapl_frame), requests=yahoo.Requests()
     )
 
     assert fetched.bars.get_column("dividend").sum() == pytest.approx(
@@ -61,20 +61,20 @@ def test_when_fetch_bars_then_a_forming_bar_is_returned_for_the_core_to_drop(
     eurusd_frame,
 ):
     fetched = yahoo.fetch_bars(
-        ["EURUSD=X"], history=_answering(eurusd_frame), requests=yahoo.Requests()
+        ["EURUSD=X"], "max", history=_answering(eurusd_frame), requests=yahoo.Requests()
     )
 
     assert fetched.bars.get_column("day").to_list()[-1] >= datetime.date(2026, 11, 17)
 
 
 def test_when_a_ticker_is_missing_then_it_fails_with_no_data(aapl_frame):
-    def history(ticker):
+    def history(ticker, _period):
         if ticker == "NOPE":
             raise yfinance.exceptions.YFPricesMissingError("NOPE", "delisted")
         return aapl_frame
 
     fetched = yahoo.fetch_bars(
-        ["AAPL", "NOPE"], history=history, requests=yahoo.Requests()
+        ["AAPL", "NOPE"], "max", history=history, requests=yahoo.Requests()
     )
 
     assert fetched.failed == (port.Failure(reason="no data", ticker="NOPE"),)
@@ -83,7 +83,10 @@ def test_when_a_ticker_is_missing_then_it_fails_with_no_data(aapl_frame):
 
 def test_when_the_frame_is_empty_then_the_ticker_fails_with_no_data():
     fetched = yahoo.fetch_bars(
-        ["AAPL"], history=_answering(pandas.DataFrame()), requests=yahoo.Requests()
+        ["AAPL"],
+        "max",
+        history=_answering(pandas.DataFrame()),
+        requests=yahoo.Requests(),
     )
 
     assert fetched.failed == (port.Failure(reason="no data", ticker="AAPL"),)
@@ -96,7 +99,7 @@ def test_when_the_frame_lacks_columns_then_the_ticker_is_unparseable():
     )
 
     fetched = yahoo.fetch_bars(
-        ["AAPL"], history=_answering(frame), requests=yahoo.Requests()
+        ["AAPL"], "max", history=_answering(frame), requests=yahoo.Requests()
     )
 
     assert fetched.failed == (
@@ -107,6 +110,7 @@ def test_when_the_frame_lacks_columns_then_the_ticker_is_unparseable():
 def test_when_every_ticker_fails_then_bars_are_empty_in_the_schema():
     fetched = yahoo.fetch_bars(
         ["A", "B"],
+        "max",
         history=_raising(yfinance.exceptions.YFPricesMissingError("A", "x")),
         requests=yahoo.Requests(),
     )
@@ -144,7 +148,7 @@ def test_when_yahoo_throttles_then_the_request_is_retried_and_counted(monkeypatc
     requests = yahoo.Requests()
     history = yahoo.build_history(_constants(5), requests=requests, sleep=waits.append)
 
-    frame = history("AAPL")
+    frame = history("AAPL", "max")
 
     assert len(frame) == 0
     assert (requests.sent, len(waits)) == (3, 2)
@@ -158,7 +162,7 @@ def test_when_retries_run_out_then_the_ticker_fails_with_the_error_name(monkeypa
         _constants(3), requests=requests, sleep=lambda _s: None
     )
 
-    fetched = yahoo.fetch_bars(["AAPL"], history=history, requests=requests)
+    fetched = yahoo.fetch_bars(["AAPL"], "max", history=history, requests=requests)
 
     assert fetched.failed == (port.Failure(reason="YFRateLimitError", ticker="AAPL"),)
     assert fetched.requests == 3
@@ -170,5 +174,5 @@ def test_when_read_constants_then_the_yaml_values_arrive():
     assert (constants.attempts, constants.requests_per_second, constants.tolerance) == (
         5,
         1,
-        0,
+        5,
     )

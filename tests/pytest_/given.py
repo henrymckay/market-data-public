@@ -62,9 +62,11 @@ def small_universe() -> polars.DataFrame:
         {
             "active": [True, True, True],
             "asset_class": ["stock", "stock", "rate"],
+            "featured": [True, False, True],
             "name": ["Alpha", "Beta", "Ten year"],
             "quote_type": ["price", "price", "yield"],
             "sector": ["Tech", "Tech", "Treasury yield"],
+            "source": ["sp500", "sp500", "curated"],
             "ticker": ["AAA", "BBB", "^TNX"],
         },
         schema=port.UNIVERSE,
