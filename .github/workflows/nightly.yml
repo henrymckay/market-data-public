@@ -13,7 +13,11 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    outputs:
+      started: ${{ steps.clock.outputs.started }}
     steps:
+      - id: clock
+        run: echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -28,3 +32,39 @@ jobs:
         run: uv run --no-dev market-data-cli status --log-level info
         env:
           motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
+  # Fills the API's cache so no visitor waits on a miss (PLAN.md, D60). It holds
+  # no secret: every request is a public GET.
+  warm:
+    needs: nightly
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions: {}
+    env:
+      API_URL: ${{ vars.API_URL }}
+      STARTED: ${{ needs.nightly.outputs.started }}
+    steps:
+      - name: Wait for the API to see this run
+        run: |
+          for _ in $(seq 40); do
+            ended="$(curl -sf "$API_URL/api/latest?v=$(date +%s)" | jq -r '.ended // empty')" || ended=""
+            echo "api ended=${ended:-none} nightly started=$STARTED"
+            if [[ -n "$ended" && ! "$ended" < "$STARTED" ]]; then exit 0; fi
+            sleep 30
+          done
+          echo "::error::the API's version never reached this run within 20 minutes"
+          exit 1
+      - name: Request every response once
+        run: |
+          fail=0
+          for path in /api/overview /api/runs; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$API_URL$path")"
+            echo "$code $path"
+            [[ "$code" == 200 ]] || fail=1
+          done
+          slugs="$(curl -sf --max-time 60 "$API_URL/api/overview" | jq -r '.[].slug')"
+          [[ -n "$slugs" ]] || { echo "::error::no slugs in /api/overview"; exit 1; }
+          export API_URL
+          results="$(printf '%s\n' $slugs | xargs -P 4 -I{} sh -c 'echo "$(curl -s -o /dev/null -w "%{http_code} %{time_total}s" --max-time 60 "$API_URL/api/bars/{}") /api/bars/{}"')"
+          echo "$results"
+          [[ "$(grep -c -v '^200 ' <<<"$results")" == 0 ]] || fail=1
+          exit "$fail"
