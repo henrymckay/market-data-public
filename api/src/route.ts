@@ -62,14 +62,12 @@ export function route(method: string, pathname: string): Route {
   return { kind: "error", failure: notFound(`No such path '${pathname}'`) };
 }
 
-/** The ticker a slug names in the overview body, or null when none does. */
-export function tickerForSlug(overviewBody: string, slug: string): string | null {
-  const rows: unknown = JSON.parse(overviewBody);
-  if (!Array.isArray(rows)) return null;
-  for (const row of rows as { slug?: unknown; ticker?: unknown }[]) {
-    if (row.slug === slug && typeof row.ticker === "string") return row.ticker;
-  }
-  return null;
+/** The ticker a slug names in the slugs body, or null when none does. */
+export function tickerForSlug(slugsBody: string, slug: string): string | null {
+  const slugs: unknown = JSON.parse(slugsBody);
+  if (slugs === null || typeof slugs !== "object" || !Object.hasOwn(slugs, slug)) return null;
+  const ticker = (slugs as Record<string, unknown>)[slug];
+  return typeof ticker === "string" ? ticker : null;
 }
 
 /** The data version a `latest` body names: its `ended`, or `none` before any run. */
