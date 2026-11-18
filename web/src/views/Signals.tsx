@@ -222,9 +222,9 @@ export default function Signals({ data, route, update }: Props) {
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-        <span className="flex items-center gap-2">Timeframe <Segmented label="Timeframe" options={TIMEFRAME_FILTERS} value={route.tf} onChange={(tf) => update({ tf })} format={(t) => TF_LABEL[t] ?? t} /></span>
-        <span className="flex items-center gap-2">Event <Segmented label="Event" options={EVENT_FILTERS} value={route.event} onChange={(event) => update({ event })} format={(e) => EVENT_FILTER_WORDS[e]} /></span>
-        <span className="flex items-center gap-2">Grade <Segmented label="Grade" options={GRADE_FILTERS} value={route.grade} onChange={(g) => update({ grade: g })} format={(g) => GRADE_FILTER_WORDS[g]} /></span>
+        <span className="flex min-w-0 max-w-full items-center gap-2">Timeframe <Segmented label="Timeframe" options={TIMEFRAME_FILTERS} value={route.tf} onChange={(tf) => update({ tf })} format={(t) => TF_LABEL[t] ?? t} /></span>
+        <span className="flex min-w-0 max-w-full items-center gap-2">Event <Segmented label="Event" options={EVENT_FILTERS} value={route.event} onChange={(event) => update({ event })} format={(e) => EVENT_FILTER_WORDS[e]} /></span>
+        <span className="flex min-w-0 max-w-full items-center gap-2">Grade <Segmented label="Grade" options={GRADE_FILTERS} value={route.grade} onChange={(g) => update({ grade: g })} format={(g) => GRADE_FILTER_WORDS[g]} /></span>
       </div>
 
       {signals === null ? (

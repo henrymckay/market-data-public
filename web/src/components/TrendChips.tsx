@@ -18,7 +18,7 @@ const TONE = { down: "text-down-text", none: "text-muted-foreground", turning_do
 /** Three chips, D W M: an arrow for each timeframe's trend, its state in words for a screen reader. */
 export function TrendChips({ item }: { item: Instrument }) {
   return (
-    <span className="inline-flex items-center gap-1.5" role="group" aria-label={`Trend of ${item.ticker}`}>
+    <span className="relative inline-flex items-center gap-1.5" role="group" aria-label={`Trend of ${item.ticker}`}>
       {TIMEFRAMES.map((frame: Timeframe) => {
         const state = item.trend[frame];
         const Icon = state === null ? Minus : ICON[state];

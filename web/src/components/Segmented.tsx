@@ -11,7 +11,7 @@ interface SegmentedProps<T extends string> {
 /** A row of exclusive choices, such as a period or a range. */
 export function Segmented<T extends string>({ label, options, value, onChange, format }: SegmentedProps<T>) {
   return (
-    <div role="group" aria-label={label} className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-muted p-0.5 scroll-thin">
+    <div role="group" aria-label={label} className="inline-flex min-w-0 max-w-full gap-0.5 overflow-x-auto rounded-md bg-muted p-0.5 scroll-thin">
       {options.map((option) => (
         <button
           key={option}
