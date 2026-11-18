@@ -1,0 +1,25 @@
+{
+  "name": "market-data-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.23.0",
+    "@cloudflare/workers-types": "^5.20261118.1",
+    "@types/pg": "^8.23.1",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.164.0"
+  }
+}
