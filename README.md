@@ -3,6 +3,7 @@
 A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance`, stores them in MotherDuck, and shows them on a dashboard that reads the store live through a small API; a throwaway end-to-end test.
 
 **Live dashboard: <https://henrymckay.github.io/market-data-public/>**
+**Live API: <https://market-data-api.henrymckay.workers.dev/>** (its docs page)
 
 ![The Markets screen: five headline tiles, a sector treemap, leaders and laggards, and the table of every instrument](docs/screenshot.png)
 
@@ -30,8 +31,12 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `fetch`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
 - Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
-`.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand, in one job: `nightly`, then `status`; it holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
-`.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, once the repository variable `API_URL` names the API.
+`.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand.
+Its `nightly` job runs `nightly`, then `status`, and holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
+Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest` to reach the run, then requests `/api/overview`, `/api/runs` and every `/api/bars/{slug}` so no visitor waits on a cache miss, and fails on any status but 200.
+`.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, with `VITE_API_URL` from the repository variable `API_URL`.
+`.github/workflows/api.yml` tests the Worker on every push touching `api/` and deploys it from `main` with the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `MOTHERDUCK_API_TOKEN` (the read-only service account's token, uploaded as the Worker secret `MOTHERDUCK_TOKEN`).
+`.github/workflows/verify-secrets.yml`, run by hand, counts each token in every run log, the published site and a `wrangler tail` session, and prints only the counts.
 
 Run it by hand with `gh workflow run nightly.yml --ref main`.
 
@@ -57,7 +62,28 @@ Four screens: Markets, Ticker, Compare and Runs; every view is a link (`?view=ti
 
 ## API
 
-`api/` is a Cloudflare Worker that answers the dashboard's four reads (`/api/latest`, `/api/overview`, `/api/runs`, `/api/bars/{slug}`) from MotherDuck through a cache, with a docs page at `/`; it is built and tested but not deployed yet, and the dashboard on `main` still reads the files the old export published until the front end on the API is merged and deployed.
+`api/` is a Cloudflare Worker, <https://market-data-api.henrymckay.workers.dev/>, that answers the dashboard's reads from MotherDuck through a cache (Workers KV, keyed by the last stored run, refreshed by a cron every 15 minutes).
+It is read-only: its MotherDuck user is a service account that sees `market_data` only through a read-only share.
+The root path is the docs page.
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/api/latest` | the last stored `yahoo` run, or `null` |
+| GET | `/api/overview` | one object per instrument: identity, coverage, every metric, a 63-bar sparkline |
+| GET | `/api/runs` | the last 90 runs, newest first |
+| GET | `/api/bars/{slug}` | one instrument's whole history, oldest first, as columns |
+
+```bash
+curl -s https://market-data-api.henrymckay.workers.dev/api/latest
+```
+
+```json
+{"day":"2026-11-17","ended":"2026-11-18T06:39:02Z","outcome":"stored","rows":833631}
+```
+
+An unknown slug is `404` with `{"error": "...", "code": "not_found"}`; MotherDuck being unreachable is `503` with `Retry-After`.
+Only the dashboard's origin gets CORS headers.
+
 Run it locally against the store, the token going from the keychain into that one process and nowhere else:
 
 ```bash
@@ -120,4 +146,16 @@ security delete-generic-password -a "$USER" -s motherduck-token   # the local co
 ```
 
 Then revoke the token in MotherDuck's settings (Settings, Access tokens), since the repository secret held a copy of it.
+
+The API adds its own pieces, which `gh repo delete` does not reach:
+
+```bash
+motherduck_token="$(security find-generic-password -a "$USER" -s motherduck-token -w)" \
+  duckdb md: -c "drop share market_data_api"              # the read-only share
+curl -X DELETE https://api.motherduck.com/v1/users/market_data_api \
+  -H "Authorization: Bearer $(security find-generic-password -a "$USER" -s motherduck-token -w)"   # the service account and its token
+```
+
+- Delete the Worker `market-data-api` and the KV namespace `market-data-api-cache` in the Cloudflare dashboard (Workers & Pages), or with `npx wrangler login` and `npx wrangler delete` in `api/`.
+- Revoke the Cloudflare API token under My Profile, API Tokens.
 The schedule is disabled by GitHub after 60 days without repository activity, so a forgotten copy stops itself.
