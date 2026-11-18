@@ -11,6 +11,7 @@ from sqlfluff.core import FluffConfig
 
 from market_data.code import operate, port, transform
 from market_data.code.adapt import motherduck
+from pytest_ import fake
 
 _ROOT = pathlib.Path(__file__).parents[3]
 _QUERIES = _ROOT / "api" / "src" / "queries"
@@ -44,7 +45,7 @@ def connection(tmp_path, make_bars, small_universe, clock):
     )
     store.replace(
         port.Load(
-            answered=("AAA", "BBB", "^TNX"),
+            since=fake.whole(("AAA", "BBB", "^TNX")),
             bars=bars,
             fetched=_STARTED,
             rejected=polars.DataFrame(schema=port.REJECTED),
@@ -106,6 +107,32 @@ def test_when_overview_is_empty_then_it_is_an_empty_array(tmp_path):
     assert _body(connection, "overview") == []
 
 
+def test_when_slugs_then_one_slug_per_instrument_and_every_overview_slug_resolves(
+    connection,
+):
+    slugs = _body(connection, "slugs")
+    overview = _body(connection, "overview")
+
+    assert slugs == {row["slug"]: row["ticker"] for row in overview}
+    assert slugs["tnx"] == "^TNX"
+
+
+def test_when_overview_has_featured_and_source_then_each_row_carries_them(connection):
+    body = _body(connection, "overview")
+
+    assert [(row["featured"], row["source"]) for row in body] == [
+        (True, "sp500"),
+        (False, "sp500"),
+        (True, "curated"),
+    ]
+
+
+def test_when_slugs_is_empty_then_it_is_an_empty_object(tmp_path):
+    connection = motherduck.connect(str(tmp_path / "empty.duckdb"))
+
+    assert _body(connection, "slugs") == {}
+
+
 def test_when_runs_then_newest_first_with_utc_times(connection):
     body = _body(connection, "runs")
 
@@ -138,7 +165,7 @@ def test_when_bars_for_an_unknown_ticker_then_every_column_is_empty(connection):
     assert body["day"] == []
 
 
-@pytest.mark.parametrize("name", ["latest", "overview", "runs", "bars"])
+@pytest.mark.parametrize("name", ["latest", "overview", "runs", "bars", "slugs"])
 def test_when_linted_then_each_query_follows_the_house_style(name):
     violations = lint(_read(name), config=FluffConfig.from_path(str(_ROOT)))
 

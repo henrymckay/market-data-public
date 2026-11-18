@@ -12,7 +12,7 @@ import pytest
 
 from market_data.code import port, transform
 from market_data.code.adapt import motherduck
-from pytest_ import stub_api
+from pytest_ import fake, stub_api
 
 _WEB = pathlib.Path(__file__).parents[3] / "web"
 _LAST_DAY = datetime.date(2026, 11, 16)
@@ -57,7 +57,7 @@ def database(tmp_path_factory: pytest.TempPathFactory, real_universe_session) ->
     started = datetime.datetime(2026, 11, 17, 2, 17, tzinfo=datetime.UTC)
     store.replace(
         port.Load(
-            answered=tuple(tickers),
+            since=fake.whole(tickers),
             bars=bars,
             fetched=started,
             rejected=polars.DataFrame(schema=port.REJECTED),

@@ -1,4 +1,5 @@
 import csv
+import dataclasses
 import logging
 
 import duckdb
@@ -8,6 +9,8 @@ import yfinance.exceptions
 
 from market_data.code.adapt import yahoo
 from market_data.code.drive import cli, logging_
+
+_CONSTANTS = yahoo.read_constants
 
 _HEADER = (
     "day,ended,failed_items,last_day,outcome,rejected,requests,rows,source,started"
@@ -31,9 +34,11 @@ def database(tmp_path, monkeypatch):
 def answering(monkeypatch, aapl_frame):
     """Make Yahoo answer with the recorded frame, except for the symbols in `dead`."""
     dead: set[str] = set()
+    constants = dataclasses.replace(_CONSTANTS(), tolerance=0)
+    monkeypatch.setattr(yahoo, "read_constants", lambda: constants)
 
     def build_history(_constants, *, requests, sleep=None):
-        def history(ticker):
+        def history(ticker, _period):
             requests.sent += 1
             if ticker in dead:
                 raise yfinance.exceptions.YFPricesMissingError(ticker, "gone")
@@ -235,3 +240,38 @@ def test_when_status_on_an_empty_store_then_exit_1(runner, database):
 
     assert result.exit_code == 1
     assert _status(result)["outcome"] == "none"
+
+
+def test_when_a_few_instruments_fail_within_tolerance_then_exit_0_and_stored(
+    runner, database, answering, monkeypatch
+):
+    monkeypatch.setattr(yahoo, "read_constants", _CONSTANTS)
+    answering.add("MSFT")
+
+    result = runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+
+    row = result.stdout.splitlines()[1].split(",")
+    assert result.exit_code == 0
+    assert (row[2], row[4]) == ("1", "stored")
+
+
+def test_when_fetch_is_full_then_every_instrument_is_asked_for_max(
+    runner, database, monkeypatch, aapl_frame
+):
+    monkeypatch.delenv("motherduck_token", raising=False)
+    periods: list[str] = []
+
+    def build_history(_constants, *, requests, sleep=None):
+        def history(_ticker, period):
+            requests.sent += 1
+            periods.append(period)
+            return aapl_frame
+
+        return history
+
+    monkeypatch.setattr(yahoo, "build_history", build_history)
+    runner.invoke(cli.app, ["fetch", "AAPL"])
+    runner.invoke(cli.app, ["fetch", "AAPL"])
+    runner.invoke(cli.app, ["fetch", "AAPL", "--full"])
+
+    assert periods == ["max", "1mo", "max"]

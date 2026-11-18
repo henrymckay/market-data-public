@@ -6,15 +6,31 @@ import { StoreUnavailableError } from "../src/error";
 
 const LATEST = '{"day":"2026-11-17","ended":"2026-11-18T02:19:41Z","outcome":"stored","rows":9}';
 const OVERVIEW = '[{"ticker":"^GSPC","slug":"gspc"},{"ticker":"AAPL","slug":"aapl"},{"ticker":"BTC-USD","slug":"btc-usd"}]';
+const SLUGS = '{"gspc":"^GSPC","aapl":"AAPL","btc-usd":"BTC-USD"}';
 const BARS = '{"ticker":"^GSPC","day":["2026-11-16"]}';
 const ORIGIN = "https://henrymckay.github.io";
 
 /** A fake store that answers by query text and counts what it was asked. */
 function fakeStore(overrides: Partial<Record<string, string>> = {}) {
   const calls: { name: string; params: string[] }[] = [];
-  const bodies: Record<string, string> = { latest: LATEST, overview: OVERVIEW, runs: "[]", bars: BARS, ...overrides };
+  const bodies: Record<string, string> = {
+    latest: LATEST,
+    overview: OVERVIEW,
+    runs: "[]",
+    bars: BARS,
+    slugs: SLUGS,
+    ...overrides,
+  };
   const store = async (query: string, params: string[]): Promise<string> => {
-    const name = query.includes("from bars") ? "bars" : query.includes("from overview") ? "overview" : query.includes("from newest") ? "runs" : "latest";
+    const name = query.includes("from bars")
+      ? "bars"
+      : query.includes("json_group_object")
+        ? "slugs"
+        : query.includes("from overview")
+          ? "overview"
+          : query.includes("from newest")
+            ? "runs"
+            : "latest";
     calls.push({ name, params });
     const body = bodies[name];
     if (body === undefined) throw new StoreUnavailableError();
@@ -67,6 +83,17 @@ describe("data endpoints", () => {
 
     expect(await first.text()).toBe(BARS);
     expect(calls.filter((call) => call.name === "bars")).toEqual([{ name: "bars", params: ["^GSPC"] }]);
+  });
+
+  it("resolves a slug through the slugs body, never the overview", async () => {
+    const { store, calls } = fakeStore();
+    const worker = createWorker(() => store);
+
+    await worker.fetch(get("/api/bars/aapl"), testEnv());
+    await worker.fetch(get("/api/bars/btc-usd"), testEnv());
+
+    expect(calls.filter((call) => call.name === "slugs")).toHaveLength(1);
+    expect(calls.filter((call) => call.name === "overview")).toEqual([]);
   });
 
   it("serves an instrument whose slug keeps a hyphen, as BTC-USD's does", async () => {
@@ -128,7 +155,7 @@ describe("data endpoints", () => {
 });
 
 describe("unknown requests", () => {
-  it.each(["/api/bars/nope", "/api/sql", "/nothing", "/api/bars/A..B"])("answers 404 for %s with no bars query", async (path) => {
+  it.each(["/api/bars/nope", "/api/sql", "/nothing", "/api/bars/A..B", "/api/bars/constructor", "/api/bars/__proto__"])("answers 404 for %s with no bars query", async (path) => {
     const { store, calls } = fakeStore();
     const response = await createWorker(() => store).fetch(get(path), testEnv());
 
@@ -218,7 +245,7 @@ describe("when MotherDuck fails", () => {
 });
 
 describe("the cron", () => {
-  it("fills overview and runs under a new version, then moves it", async () => {
+  it("fills overview, runs and slugs under a new version, then moves it", async () => {
     const { store, calls } = fakeStore();
     const worker = createWorker(() => store);
 
@@ -227,7 +254,8 @@ describe("the cron", () => {
 
     expect(await cache.version()).toBe("2026-11-18T02:19:41Z");
     expect(await cache.get("2026-11-18T02:19:41Z", "overview")).toBe(OVERVIEW);
-    expect(calls.map((call) => call.name)).toEqual(["latest", "overview", "runs"]);
+    expect(await cache.get("2026-11-18T02:19:41Z", "slugs")).toBe(SLUGS);
+    expect(calls.map((call) => call.name)).toEqual(["latest", "overview", "runs", "slugs"]);
   });
 
   it("queries only latest when the version has not moved", async () => {
