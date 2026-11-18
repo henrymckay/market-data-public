@@ -10,6 +10,7 @@ _SYMBOL = r"^[A-Z][A-Z0-9.]{0,9}$"
 _MEMBER_ROWS = range(495, 511)
 _SECTOR_NAMES = {"Information Technology": "Technology"}
 _SP500 = "sp500"
+_TEXT = r"^[^\x00-\x1f\x7f]{1,100}$"
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
@@ -43,6 +44,10 @@ def _check_members(members: polars.DataFrame) -> None:
         .item()
     ):
         raise error.SourceError("The S&P 500 list lacks a name or a sector")
+    if not members.select(polars.col("name", "sector").str.contains(_TEXT).all()).row(
+        0
+    ) == (True, True):
+        raise error.SourceError("The S&P 500 list holds a name or sector of odd shape")
 
 
 def sync_members(
