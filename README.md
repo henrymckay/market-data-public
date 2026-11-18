@@ -104,7 +104,15 @@ uv run npm --prefix web run preview    # http://127.0.0.1:4173/
 The API only answers pages from the origin in its `ALLOWED_ORIGIN`; for the preview, start it with `-- --var ALLOWED_ORIGIN:http://127.0.0.1:4173` after `npm run dev`.
 A slow API shows a "still loading" note and a failed one an error with a retry; the rest of the page keeps working.
 
-Four screens: Markets (its table of every instrument pages at 100 rows), Ticker, Compare and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
+Five screens: Markets (its table of every instrument pages at 100 rows and ends in a Trend column of D, W and M chips), Ticker, Compare, Signals and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
+
+![The Signals screen: four tiles, the recent signals, the base rates and the edge over any bar](docs/screenshot-signals.png)
+
+**Signals** answers what turned last night and how such turns have done before: filters for asset class, timeframe, event, grade and day, tiles for the day, the table of recent signals (50 a page; a row opens the chart at the signal), the base rates at a short, primary or long horizon with the any-bar baseline beside them, and the edge as bars.
+It is stated on the screen: the rates cover all stored history of today's members, so survivorship flatters the long side, and the rules were set on this data.
+
+**Ticker** gains a D W M timeframe toggle, swing labels (HH, LH, HL, LL), an arrow for each signal and a card listing the instrument's signals.
+A link with `sig` selects one signal and draws its level (dashed) and the line that proves it wrong (dotted); the alerts' taps open exactly that, `?view=ticker&t=NVDA&tf=w&range=5Y&sig=2026-11-10.break_up`, and a digest opens `?view=signals&cls=stock&day=2026-11-17`.
 
 ## API
 
@@ -117,7 +125,9 @@ The root path is the docs page.
 | GET | `/api/latest` | the last stored `yahoo` run and the data `version`, or `null` |
 | GET | `/api/overview` | one object per instrument: identity, coverage, every metric, a 63-bar sparkline |
 | GET | `/api/runs` | the last 90 runs, newest first |
-| GET | `/api/bars/{slug}` | one instrument's whole history, oldest first, as columns |
+| GET | `/api/bars/{slug}` | one instrument's whole history, oldest first, as columns, with `weekly` and `monthly` bars, `pivots` and `signals` |
+| GET | `/api/signals` | signals known in the last 120 days, newest first (about 0.9 MB, 180 KB compressed) |
+| GET | `/api/stats` | every base rate: hit rate beside the any-bar baseline, and the edge |
 
 ```bash
 curl -s https://market-data-api.henrymckay.workers.dev/api/latest
