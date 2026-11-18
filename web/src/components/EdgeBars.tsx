@@ -19,8 +19,9 @@ export function EdgeBars({ rows, label }: { rows: readonly EdgeRow[]; label: str
         const width = (Math.abs(row.edge) / extent) * 100;
         const positive = row.edge >= 0;
         return (
-          <li key={row.key} title={row.title} className="grid h-[22px] grid-cols-[132px_minmax(0,1fr)] items-center">
+          <li key={row.key} title={row.title} className="relative grid h-[22px] grid-cols-[132px_minmax(0,1fr)] items-center">
             <span className="truncate pr-2 text-right text-xs font-medium text-text-2">{row.label}</span>
+            {row.title !== undefined && <span className="sr-only">{row.title}</span>}
             <span className="relative mx-16 block h-3">
               <span className="absolute inset-y-0 w-px bg-axis" style={{ left: `${zero}%` }} />
               <span

@@ -164,7 +164,7 @@ export function CandleChart({ series, structure, assetClass, tokens: t, range, m
       if (!indexOf.has(mark.day)) continue;
       const up = mark.direction === "up";
       marks.push({
-        color: up ? t.up : t.down,
+        color: up ? t.upText : t.downText,
         position: up ? "belowBar" : "aboveBar",
         shape: up ? "arrowUp" : "arrowDown",
         size: structure.selected?.id === mark.id ? 1.3 : 1,
@@ -186,7 +186,7 @@ export function CandleChart({ series, structure, assetClass, tokens: t, range, m
     element.current!.dataset.lines = "0";
     if (picked === null) return;
     const single = picked.level === picked.stop;
-    levels.current.push(body.createPriceLine({ axisLabelVisible: true, color: t.accent, lineStyle: LineStyle.Dashed, lineWidth: 1, price: picked.level, title: single ? "Level and stop" : "Level" }));
+    levels.current.push(body.createPriceLine({ axisLabelVisible: true, color: t.accent, lineStyle: LineStyle.Dashed, lineWidth: 1, price: picked.level, title: "Level" }));
     if (!single) {
       levels.current.push(body.createPriceLine({ axisLabelVisible: true, color: picked.direction === "up" ? t.down : t.up, lineStyle: LineStyle.Dotted, lineWidth: 1, price: picked.stop, title: "Invalid" }));
     }

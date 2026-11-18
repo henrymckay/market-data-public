@@ -28,12 +28,12 @@ export const EVENT_WORDS: Record<EventName, string> = {
 
 /** The words a chart marker carries: short, so neighbouring bars keep their labels. */
 export const EVENT_SHORT: Record<EventName, string> = {
-  break_down: "1st LL",
-  break_up: "1st HH",
-  confirm_down: "1st LH",
-  confirm_up: "1st HL",
-  fail_down: "LL failed",
-  fail_up: "HH failed",
+  break_down: "Lower low",
+  break_up: "Higher high",
+  confirm_down: "Lower high",
+  confirm_up: "Higher low",
+  fail_down: "Low failed",
+  fail_up: "High failed",
 };
 
 export const EVENT_FILTERS =["all", "break_up", "confirm_up", "break_down", "confirm_down", "fail"] as const;
