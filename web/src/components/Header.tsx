@@ -40,7 +40,7 @@ function AgeChip({ freshness, lastDay, unknown }: { freshness: Freshness | null;
       <span className="truncate">
         {freshness.level !== "fresh" && <span className="mr-1.5 font-medium text-foreground">{freshness.label}.</span>}
         <span className="hidden md:inline">{lastDay === null ? "" : `Prices to ${formatDay(lastDay)} · `}</span>
-        {age === null ? "no stored run" : <>run {age}</>}
+        {age === null ? (freshness.level === "fresh" ? "no stored run" : "") : <>run {age}</>}
       </span>
     </div>
   );

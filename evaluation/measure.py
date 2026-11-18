@@ -120,6 +120,7 @@ def run(url: str, throttle: bool) -> None:
         ):
             page.keyboard.press("/")
             page.get_by_placeholder("Search by ticker or name").fill(ticker)
+            page.wait_for_timeout(int(os.environ.get("DWELL_MS", "0")))
             switches_t = page.evaluate("() => performance.now()")
             page.keyboard.press("Enter")
             elapsed = page.evaluate(_SWITCH, name)
