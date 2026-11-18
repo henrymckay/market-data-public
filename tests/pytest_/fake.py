@@ -177,6 +177,7 @@ class AlertsLedger:
     stats: polars.DataFrame
     structure: polars.DataFrame
     tickers: polars.DataFrame
+    flat: bool = False
     missing: tuple[str, ...] = ()
     sent: polars.DataFrame = dataclasses.field(
         default_factory=lambda: polars.DataFrame(schema={"id": polars.String})
@@ -198,18 +199,19 @@ class AlertsLedger:
     def read_chart_bars(
         self, ticker: str, timeframe: str, limit: int
     ) -> polars.DataFrame:
-        """Return a few bars ending on the signal day."""
+        """Return 30 weekly bars ending on the signal day, flat when told to."""
         days = [
-            datetime.date(2026, 11, 2) + datetime.timedelta(days=7 * n)
-            for n in range(2)
+            datetime.date(2026, 11, 9) - datetime.timedelta(days=7 * n)
+            for n in reversed(range(30))
         ]
+        spread = 0.0 if self.flat else 1.0
         return polars.DataFrame(
             {
-                "close": [1.0, 2.0],
+                "close": [10.0] * 30,
                 "day": days,
-                "high": [2.0, 3.0],
-                "low": [0.5, 1.5],
-                "open": [1.0, 1.5],
+                "high": [10.0 + spread] * 30,
+                "low": [10.0 - spread] * 30,
+                "open": [10.0] * 30,
             }
         )
 

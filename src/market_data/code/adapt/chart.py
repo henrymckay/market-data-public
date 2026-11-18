@@ -30,13 +30,13 @@ _DATE_FORMAT = {"d": "%d %b %Y", "w": "%d %b %Y", "m": "%b %Y"}
 
 def _frame_axes(figure: Figure) -> Axes:
     """Return the plot's axes, drawn in the house light tokens."""
-    axes = figure.add_axes((0.065, 0.12, 0.79, 0.70), facecolor=_SURFACE)
+    axes = figure.add_axes((0.065, 0.12, 0.75, 0.70), facecolor=_SURFACE)
     for side in ("top", "right", "left"):
         axes.spines[side].set_visible(False)
     axes.spines["bottom"].set_color(_AXIS)
     axes.grid(axis="y", color=_GRID, linewidth=0.8)
     axes.set_axisbelow(True)
-    axes.tick_params(colors=_MUTED, length=0, labelsize=10)
+    axes.tick_params(colors=_MUTED, length=0, labelsize=12)
     return axes
 
 
@@ -100,7 +100,7 @@ def _tag(
         price if inside else limits[0 if price < limits[0] else 1],
         text if inside else f"{text} (off chart)",
         color=colour,
-        fontsize=10,
+        fontsize=12,
         fontweight="bold",
         transform=axes.get_yaxis_transform(),
         va="center",
@@ -121,15 +121,8 @@ def _draw_lines(
     if limits[0] <= request.stop <= limits[1]:
         axes.axhline(request.stop, color=other, linestyle=":", linewidth=1.6, zorder=2)
     if abs(request.level - request.stop) <= (limits[1] - limits[0]) * 0.04:
-        _tag(axes, request.level, f"Level {level}", colour=_ACCENT, limits=limits)
-        axes.text(
-            1.012,
-            request.level,
-            "\nInvalid below" if request.direction == "up" else "\nInvalid above",
-            color=other,
-            fontsize=9,
-            transform=axes.get_yaxis_transform(),
-            va="top",
+        _tag(
+            axes, request.level, f"Level and stop\n{level}", colour=other, limits=limits
         )
         return
     _tag(axes, request.level, f"Level {level}", colour=_ACCENT, limits=limits)
@@ -158,7 +151,7 @@ def _mark_signal(
         ha="center",
         va="top" if up else "bottom",
         color=_TEXT,
-        fontsize=10,
+        fontsize=12,
         arrowprops={"arrowstyle": "-|>", "color": _TEXT, "linewidth": 1.2},
         zorder=6,
     )
@@ -180,7 +173,7 @@ def _label_pivots(axes: Axes, bars: polars.DataFrame, pivots: polars.DataFrame) 
             ha="center",
             va="bottom" if high else "top",
             color=_MUTED,
-            fontsize=9,
+            fontsize=11,
             zorder=5,
         )
 
@@ -227,7 +220,7 @@ def draw_chart(
             f"Last {bars.height} {_SUBTITLE[request.timeframe]} bars, "
             f"swings labelled, signal bar marked",
             color=_MUTED,
-            fontsize=11,
+            fontsize=12,
         )
         buffer = io.BytesIO()
         figure.savefig(buffer, format="png", facecolor=_SURFACE)

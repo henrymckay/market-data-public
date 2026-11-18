@@ -124,6 +124,14 @@ def test_when_the_image_is_refused_then_the_push_goes_as_text(ledger, rules):
     assert channel.sent[0] == ("NVDA weekly: first higher high (A)", False)
 
 
+def test_when_the_bars_are_mostly_flat_then_the_push_goes_as_text(ledger, rules):
+    ledger.flat = True
+
+    channel, _ = _run(ledger, rules)
+
+    assert channel.sent[0][1] is False
+
+
 def test_when_the_chart_cannot_be_drawn_then_the_push_goes_as_text(ledger, rules):
     channel, results = _run(ledger, rules, render=_failing_render)
 

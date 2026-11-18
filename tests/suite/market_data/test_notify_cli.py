@@ -244,3 +244,12 @@ def test_when_the_store_is_asked_then_alerts_state_and_chart_reads_work(tmp_path
 
     assert store.read_sent().get_column("id").to_list() == ["a"]
     assert store.read_alert_state() == "healthy"
+
+
+def test_when_the_app_fails_unexpectedly_then_tracebacks_show_no_locals():
+    assert cli.app.pretty_exceptions_show_locals is False
+    assert all(
+        group.typer_instance is not None
+        and group.typer_instance.pretty_exceptions_show_locals is False
+        for group in cli.app.registered_groups
+    )

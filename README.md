@@ -29,7 +29,8 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `universe sync` brings the S&P 500 rows of the CSV in line with Wikipedia's list and prints `added,removed` counts; `--check` changes nothing and exits 1 when the CSV is out of date.
 - `signals` recomputes every pivot, signal, outcome, base rate and structure over every stored bar, replaces the five tables in one transaction and prints its manifest row; `--rules PATH` reads another rules file, and `--dry-run` writes nothing and prints the base rates for every asset class and grade (`event,timeframe,horizon,n,hit_rate,baseline_hit,edge,held_rate`), `--format table` aligned.
 - `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `signals`, then `compute`, reading the bars once for the last two.
-- `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old.
+- `notify` sends the night's alerts to the ntfy topic (see Alerts) and prints one CSV row per message, `kind,title,signals,status`; it exits 0 when every send succeeded or nothing was due, 1 when any failed, 2 when `NTFY_TOPIC` is not set. `--dry-run` needs no topic, sends and records nothing, and prints every message whole as CSV, or laid out for a person with `--format table`.
+- `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old; `--alert` also sends a health message when that verdict changed since the last one, and needs the topic.
 - `fetch`, `signals`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
 - Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
@@ -63,6 +64,29 @@ Tables written by `signals`:
 
 The base rates are in-sample and over today's index members, so they overstate what a live signal would have done.
 Compare a rules change before committing it by running `signals --dry-run` under each file.
+
+## Alerts
+
+`notify` sends the owner's phone, over [ntfy.sh](https://ntfy.sh) used anonymously, what the `signals` stage found in the last four days that no earlier message named:
+
+- A **push** for each signal graded A (at most ten a night, best first) with a chart of the timeframe's last 80 bars, the level dashed, the stop dotted and the signal bar marked. The title is the verdict (`NVDA weekly: first higher high (A)`), the message at most four lines: the close or swing and its margin, where it is proved wrong, the volume and the next timeframe up's trend, and the base rate beside the any-bar baseline. A tap opens the dashboard's Ticker view at the signal (the page ignores the parameters until M11); two buttons open the chart and that day's signals.
+- A **digest** for each asset class with a signal graded B or better, ranked, at most 12 lines, ending in a count of what it leaves to the Signals screen. A class whose signals were all pushed gets none. Grade C signals and failures are never sent.
+- A **health** message, only when the pipeline's state changes: `Market data: nightly partial` (or `failed`, `stale`) with the failing stages and a link to the Actions run, then `Market data: healthy again`. `status --alert` runs it at 09:47 UTC from `watch.yml`, so a night that never ran is reported too.
+
+The base rates are in-sample and show little or no edge over any bar; read the baseline beside each.
+Each signal is sent once: `notify` appends an `alerts` row per signal a message named, and sends only signals without one.
+A message ntfy refuses after two retries gets no row, so the next night sends it again while it is recent; a push whose chart fails to draw or upload goes as text.
+
+**Subscribe** once: install the ntfy app (no account), then copy the topic without showing it and paste it as a new subscription on server `ntfy.sh`:
+
+```bash
+security find-generic-password -a "$USER" -s ntfy-market-monitor -w | pbcopy
+```
+
+The topic is the only key to the channel, so never post it; `scripts/make_topic.py` made it once (it refuses to replace one without `--rotate`, which means subscribing again) and set the repository secret `NTFY_TOPIC`.
+`nightly.yml`'s `notify` job and `watch.yml` hold it in their run step's environment; every job also pings the topic when a step before its command fails.
+`verify-secrets.yml` counts it, whole and in fragments, in every run log and the published site.
+Look at what a night would send with `market-data-cli notify --dry-run --format table` and the token in the environment.
 
 ## Dashboard
 
