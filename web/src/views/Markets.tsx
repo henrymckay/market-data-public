@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Leaders, type Leader } from "../components/Leaders";
 import { Treemap, type Leaf } from "../components/Treemap";
@@ -126,7 +126,22 @@ const SORT_VALUE: Record<string, (item: Instrument) => number | string | null> =
   ...Object.fromEntries(WINDOWS.map((w) => [w, (item: Instrument) => figure(item, w)?.value ?? null])),
 };
 
+const PAGE_SIZE = 100;
+
 const CLASS_ORDER = Object.fromEntries(ASSET_CLASSES.map((c, i) => [c, i]));
+
+function PageButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="h-7 rounded-md border border-input px-2.5 font-medium text-foreground transition-colors hover:bg-muted disabled:text-muted-foreground disabled:opacity-50 disabled:hover:bg-transparent"
+    >
+      {label}
+    </button>
+  );
+}
 
 function InstrumentTable({ items, route, update, open }: { items: Instrument[]; route: Route; update: (patch: Partial<Route>) => void; open: (ticker: string) => void }) {
   const rows = useMemo(() => {
@@ -145,6 +160,10 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
     });
   }, [items, route.assetClass, route.sort, route.dir]);
 
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const shown = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const sortBy = (key: SortKey): void => {
     const text = key === "ticker" || key === "name";
     update({ dir: route.sort === key ? (route.dir === "asc" ? "desc" : "asc") : text ? "asc" : "desc", sort: key });
@@ -162,6 +181,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
   };
 
   return (
+    <>
     <div className="scroll-thin max-h-[614px] overflow-auto rounded-md border">
       <table className="w-full min-w-[780px] sm:min-w-[860px] border-separate border-spacing-0 text-sm">
         <thead>
@@ -175,7 +195,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
           </tr>
         </thead>
         <tbody>
-          {rows.map((item) => (
+          {shown.map((item) => (
             <tr key={item.ticker} onClick={() => open(item.ticker)} className="group cursor-pointer hover:bg-muted">
               <td className="sticky left-0 z-[1] h-9 border-t bg-card px-3 font-medium group-hover:bg-muted">
                 <a href={`?view=ticker&t=${item.ticker}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); open(item.ticker); }} className="text-foreground no-underline">
@@ -200,6 +220,18 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
       </table>
       {rows.length === 0 && <EmptyNote>No instruments in this group.</EmptyNote>}
     </div>
+    {pages > 1 && (
+      <nav aria-label="Pages of instruments" className="mt-3 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          {page * PAGE_SIZE + 1}&ndash;{page * PAGE_SIZE + shown.length} of {rows.length}
+        </span>
+        <span className="flex gap-2">
+          <PageButton label="Previous" disabled={page === 0} onClick={() => setPage(page - 1)} />
+          <PageButton label="Next" disabled={page === pages - 1} onClick={() => setPage(page + 1)} />
+        </span>
+      </nav>
+    )}
+    </>
   );
 }
 
@@ -252,7 +284,7 @@ export function Markets({ data, route, update }: ViewProps) {
             subtitle={lastDay === null ? "Daily bars" : `Prices to ${formatDay(lastDay)}; last is in each instrument's own quote unit (US dollars unless an index, rate or currency pair), and yields move in basis points`}
             actions={<Segmented label="Asset class" options={["all", ...ASSET_CLASSES]} value={route.assetClass as "all"} onChange={(assetClass) => update({ assetClass })} format={(c) => CLASS_LABEL[c] ?? c} />}
           >
-            {items === null ? <Block height={420} /> : <InstrumentTable items={items} route={route} update={update} open={open} />}
+            {items === null ? <Block height={420} /> : <InstrumentTable key={`${route.assetClass}|${route.sort}|${route.dir}`} items={items} route={route} update={update} open={open} />}
           </Card>
         </>
       )}

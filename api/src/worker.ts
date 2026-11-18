@@ -5,6 +5,7 @@ import barsQuery from "./queries/bars.sql";
 import latestQuery from "./queries/latest.sql";
 import overviewQuery from "./queries/overview.sql";
 import runsQuery from "./queries/runs.sql";
+import slugsQuery from "./queries/slugs.sql";
 import {
   type Endpoint,
   type Failure,
@@ -112,8 +113,8 @@ async function answer(request: Request, context: Context): Promise<Answer> {
   if (target.kind === "data") {
     result = await body(context, version, target.endpoint, QUERIES[target.endpoint], []);
   } else {
-    const overview = await body(context, version, "overview", overviewQuery, []);
-    const ticker = tickerForSlug(overview.text, target.slug);
+    const slugs = await body(context, version, "slugs", slugsQuery, []);
+    const ticker = tickerForSlug(slugs.text, target.slug);
     if (ticker === null) return failure(context, notFound(`No instrument with slug '${target.slug}'`));
     result = await body(context, version, `bars/${target.slug}`, barsQuery, [ticker]);
   }
@@ -130,6 +131,7 @@ export async function refresh(cache: Cache, store: Store): Promise<"moved" | "sa
   await cache.put(version, "latest", latest);
   await cache.put(version, "overview", await store(overviewQuery, []));
   await cache.put(version, "runs", await store(runsQuery, []));
+  await cache.put(version, "slugs", await store(slugsQuery, []));
   await cache.setVersion(version);
   return "moved";
 }
