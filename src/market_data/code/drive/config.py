@@ -19,6 +19,30 @@ class Settings(pydantic_settings.BaseSettings):
     motherduck_token: pydantic.SecretStr | None = pydantic.Field(
         default=None, validation_alias="motherduck_token", repr=False
     )
+    ntfy_topic: pydantic.SecretStr | None = pydantic.Field(
+        default=None, validation_alias="NTFY_TOPIC", repr=False
+    )
+    github_repository: str | None = pydantic.Field(
+        default=None, validation_alias="GITHUB_REPOSITORY"
+    )
+    github_run_id: str | None = pydantic.Field(
+        default=None, validation_alias="GITHUB_RUN_ID"
+    )
+    github_server_url: str | None = pydantic.Field(
+        default=None, validation_alias="GITHUB_SERVER_URL"
+    )
+
+    @property
+    def run_url(self) -> str | None:
+        """The Actions run's page, when the job runs on GitHub."""
+        if not (
+            self.github_server_url and self.github_repository and self.github_run_id
+        ):
+            return None
+        return (
+            f"{self.github_server_url}/{self.github_repository}"
+            f"/actions/runs/{self.github_run_id}"
+        )
 
 
 def read_settings() -> Settings:
@@ -36,6 +60,7 @@ def read_settings() -> Settings:
     return settings
 
 
-def read_token_for_redaction() -> str | None:
-    """Return the token's value from the environment, for the log's redaction only."""
-    return os.environ.get("motherduck_token") or None  # noqa: SIM112
+def read_secrets_for_redaction() -> tuple[str, ...]:
+    """Return the token and the topic from the environment, for redaction only."""
+    values = (os.environ.get("motherduck_token"), os.environ.get("NTFY_TOPIC"))  # noqa: SIM112
+    return tuple(value for value in values if value)
