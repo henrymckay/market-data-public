@@ -64,10 +64,15 @@ def compute_signals(
         )
         try:
             store.replace_signals(computed)
-            rows, stored = computed.count_signals(), True
+            rows, stored = computed.signals.height, True
         except error.StoreError as failure:
             _LOGGER.error("The signals stage failed: %s", failure)
-    last_day = started.astimezone(datetime.UTC).date() - datetime.timedelta(days=1)
+    newest = bars.get_column("day").max()
+    last_day = (
+        newest
+        if isinstance(newest, datetime.date)
+        else started.astimezone(datetime.UTC).date() - datetime.timedelta(days=1)
+    )
     run = transform.Run(
         day=last_day,
         ended=now(),

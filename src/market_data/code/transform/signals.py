@@ -135,61 +135,21 @@ class Computed:
     signals: polars.DataFrame
     structure: polars.DataFrame
 
-    def count_signals(self) -> int:
-        """Return how many signals there are."""
-        return self.signals.height
-
 
 @dataclasses.dataclass(slots=True)
 class _Found:
     """What the walks over every group found, as columns of rows."""
 
     pivots: dict[str, list[object]] = dataclasses.field(
-        default_factory=lambda: {
-            name: []
-            for name in (
-                "bar",
-                "confirmed",
-                "kind",
-                "label",
-                "price",
-                "ticker",
-                "timeframe",
-            )
-        }
+        default_factory=lambda: {name: [] for name in _FOUND_PIVOTS}
     )
     signals: dict[str, list[object]] = dataclasses.field(
-        default_factory=lambda: {
-            name: []
-            for name in (
-                "atr",
-                "end",
-                "event",
-                "level",
-                "margin_atr",
-                "row",
-                "stop",
-                "swing_atr",
-                "ticker",
-                "timeframe",
-                "trend_swings",
-            )
-        }
+        default_factory=lambda: {name: [] for name in _FOUND_SIGNALS}
     )
     states_row: list[int] = dataclasses.field(default_factory=list[int])
     states: list[str] = dataclasses.field(default_factory=list[str])
     structure: dict[str, list[object]] = dataclasses.field(
-        default_factory=lambda: {
-            name: []
-            for name in (
-                "last_high",
-                "last_low",
-                "since",
-                "state",
-                "ticker",
-                "timeframe",
-            )
-        }
+        default_factory=lambda: {name: [] for name in _FOUND_STRUCTURE}
     )
     bounds: list[tuple[int, int]] = dataclasses.field(
         default_factory=list[tuple[int, int]]
@@ -246,7 +206,7 @@ def _walk_groups(bars: polars.DataFrame, rules: rules_.Rules) -> _Found:
         columns["last_high"].append(walked.last_high)
         columns["last_low"].append(walked.last_low)
         columns["since"].append(None if walked.since is None else start + walked.since)
-        columns["state"].append(walked.state)
+        columns["state"].append(walked.states[-1] if walked.states else "none")
         columns["ticker"].append(ticker)
         columns["timeframe"].append(timeframe)
     return found
@@ -354,13 +314,16 @@ def build_signals(
         signals, adj_close=adj_close, bounds=found.bounds, close=close
     )
     stored_signals = (
-        signals.join(to_date, on="id", how="left", validate="1:1")
+        signals.with_columns(to_date.drop("id"))
         .with_columns(polars.lit(rules_id).alias("rules"))
         .select(list(SIGNALS))
         .sort("ticker", "timeframe", "day")
     )
+    classes = tickers.select("asset_class", "ticker")
     baseline = outcomes.build_baseline(
-        frame.join(tickers.select("asset_class", "ticker"), on="ticker", how="left"),
+        frame.select("adj_close", "day", "ticker", "timeframe").join(
+            classes, on="ticker", how="left"
+        ),
         atr_bars=rules.atr_bars,
         horizons=horizons,
     )
@@ -371,9 +334,7 @@ def build_signals(
             baseline=baseline,
             outcomes=results,
             rules_id=rules_id,
-            signals=stored_signals.join(
-                tickers.select("asset_class", "ticker"), on="ticker", how="left"
-            ),
+            signals=stored_signals.join(classes, on="ticker", how="left"),
         ),
         signals=stored_signals,
         structure=structured.select(list(STRUCTURE)).sort("ticker", "timeframe"),

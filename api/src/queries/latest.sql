@@ -10,13 +10,13 @@ select
                     version: (
                         select
                             strftime(
-                                max(metrics_runs.ended) at time zone 'UTC',
+                                max(stage_runs.ended) at time zone 'UTC',
                                 '%Y-%m-%dT%H:%M:%SZ'
                             )
-                        from runs as metrics_runs
+                        from runs as stage_runs
                         where
-                            metrics_runs.source = 'metrics'
-                            and metrics_runs.outcome = 'stored'
+                            stage_runs.source in ('metrics', 'signals')
+                            and stage_runs.outcome = 'stored'
                     )
                 })::varchar
             from runs

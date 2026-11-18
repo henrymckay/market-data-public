@@ -88,8 +88,9 @@ def test_when_latest_then_it_is_the_last_stored_yahoo_run(connection):
     }
 
 
-def test_when_a_later_metrics_run_stores_then_the_version_moves_to_its_end(
-    connection,
+@pytest.mark.parametrize("source", ["metrics", "signals"])
+def test_when_a_later_stage_run_stores_then_the_version_moves_to_its_end(
+    connection, source
 ):
     later = datetime.datetime(2026, 11, 17, 3, 5, 9, tzinfo=datetime.UTC)
     for outcome, ended in (
@@ -97,8 +98,8 @@ def test_when_a_later_metrics_run_stores_then_the_version_moves_to_its_end(
         (transform.Outcome.FAILED, later + datetime.timedelta(hours=1)),
     ):
         connection.execute(
-            "insert into runs values (?, ?, 0, ?, ?, 0, 0, 0, 'metrics', ?)",
-            [_DAY, ended, _DAY, str(outcome), later],
+            "insert into runs values (?, ?, 0, ?, ?, 0, 0, 0, ?, ?)",
+            [_DAY, ended, _DAY, str(outcome), source, later],
         )
 
     body = _body(connection, "latest")

@@ -5,6 +5,8 @@ import re
 import polars
 import polars.selectors
 
+from market_data.code.transform import rules
+
 _SPARK_BARS = 63
 _SPARK_DIGITS = 5
 _METRIC_DIGITS = 7
@@ -65,7 +67,7 @@ def build_overview(
             .filter(polars.col("timeframe").eq(name))
             .first()
             .alias(f"trend_{name}")
-            for name in ("d", "w", "m")
+            for name in rules.TIMEFRAMES
         )
     )
     ordered = bars.sort("ticker", "day")

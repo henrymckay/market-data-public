@@ -58,7 +58,6 @@ class Walk:
     pivots: list[Pivot]
     signals: list[Signal]
     since: int | None
-    state: str
     states: list[str]
 
 
@@ -96,7 +95,7 @@ def walk(
     :param high: Split-adjusted highs.
     :param k: The swing threshold in ATR.
     :param low: Split-adjusted lows.
-    :returns: The pivots, signals, the state after every bar and where it stands.
+    :returns: The pivots, signals and the state after every bar.
     """
     highs, lows, closes = high.tolist(), low.tolist(), close.tolist()
     alpha = 1.0 / atr_bars
@@ -314,6 +313,5 @@ def walk(
         pivots=pivots,
         signals=signals,
         since=since,
-        state=STATES[state],
         states=[STATES[code] for code in states],
     )

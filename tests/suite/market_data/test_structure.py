@@ -52,7 +52,7 @@ def test_when_the_labels_settle_then_the_structure_is_down_until_the_break():
     assert walked.states[33] == "down"
     assert walked.states[47] == "down"
     assert walked.states[48] == "turning_up"
-    assert (walked.state, walked.since) == ("turning_up", 48)
+    assert (walked.states[-1], walked.since) == ("turning_up", 48)
 
 
 def test_when_a_wick_passes_the_level_but_the_close_does_not_then_no_break():
@@ -72,7 +72,7 @@ def test_when_the_next_swing_low_is_above_the_stop_then_confirm_up():
     assert (confirm.level, confirm.stop, confirm.trend_swings) == (103.5, 103.5, 2)
     assert confirm.margin_atr == pytest.approx(3.0 / 1.5)
     assert confirm.swing_atr == pytest.approx(7.0 / 1.5)
-    assert (walked.state, walked.since) == ("up", 59)
+    assert (walked.states[-1], walked.since) == ("up", 59)
     assert (walked.last_high, walked.last_low) == (110.5, 103.5)
 
 
@@ -83,7 +83,7 @@ def test_when_a_close_falls_below_the_stop_before_a_confirmation_then_fail_up():
     assert (failure.bar, failure.event) == (56, "fail_up")
     assert (failure.level, failure.stop) == (100.5, 100.5)
     assert failure.margin_atr == pytest.approx(0.5 / 1.5)
-    assert walked.state == "down"
+    assert walked.states[-1] == "down"
 
 
 def test_when_the_next_swing_low_is_at_the_stop_then_fail_up():
@@ -92,7 +92,7 @@ def test_when_the_next_swing_low_is_at_the_stop_then_fail_up():
     failure = walked.signals[1]
     assert (failure.bar, failure.event) == (62, "fail_up")
     assert failure.margin_atr == pytest.approx(0.0)
-    assert (walked.state, walked.since) == ("down", 62)
+    assert (walked.states[-1], walked.since) == ("down", 62)
 
 
 def test_when_the_path_is_mirrored_then_a_break_down_with_the_same_margins():
@@ -111,14 +111,14 @@ def test_when_the_mirrored_break_holds_then_confirm_down():
     confirm = walked.signals[1]
     assert (confirm.bar, confirm.event) == (59, "confirm_down")
     assert (confirm.level, confirm.stop) == (96.5, 96.5)
-    assert walked.state == "down"
+    assert walked.states[-1] == "down"
 
 
 def test_when_the_mirrored_break_fails_on_a_close_then_fail_down():
     walked = _walk(series.mirror(series.path(series.FAILED_ON_CLOSE)))
 
     assert _events(walked) == [(48, "break_down"), (56, "fail_down")]
-    assert walked.state == "up"
+    assert walked.states[-1] == "up"
 
 
 def test_when_the_mirrored_break_fails_on_a_swing_then_fail_down():
@@ -141,7 +141,7 @@ def test_when_a_higher_high_swings_without_a_close_over_the_level_then_none():
 def test_when_there_are_fewer_bars_than_the_atr_needs_then_nothing_is_found():
     walked = _walk(series.path(series.DOWNTREND[:10]), atr_bars=14)
 
-    assert (walked.pivots, walked.signals, walked.state) == ([], [], "none")
+    assert (walked.pivots, walked.signals, walked.states[-1]) == ([], [], "none")
     assert (walked.last_high, walked.last_low, walked.since) == (None, None, None)
 
 

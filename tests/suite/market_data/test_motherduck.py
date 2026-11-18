@@ -507,7 +507,7 @@ def test_when_a_signals_load_fails_then_every_table_keeps_its_old_rows(
     store.replace_signals(computed)
     broken = transform.Computed(
         outcomes=computed.outcomes,
-        pivots=computed.pivots.drop("price"),
+        pivots=computed.pivots.with_columns(price=polars.lit("not a price")),
         signal_stats=computed.signal_stats,
         signals=computed.signals.head(0),
         structure=computed.structure,
