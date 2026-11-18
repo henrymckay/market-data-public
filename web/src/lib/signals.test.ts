@@ -141,6 +141,10 @@ describe("dayTiles", () => {
     expect(tiles.heldShare).toBeCloseTo(3 / 4);
   });
 
+  it("counts nothing before any day is chosen", () => {
+    expect(dayTiles([], "")).toMatchObject({ day: 0, heldShare: null });
+  });
+
   it("has no held share when no signal in the window carries one", () => {
     expect(dayTiles([signal({ held: null })], "2026-11-17").heldShare).toBeNull();
   });

@@ -74,13 +74,16 @@ jobs:
       - name: Request every response once
         run: |
           fail=0
-          for path in /api/overview /api/runs; do
+          for path in /api/overview /api/runs /api/signals /api/stats; do
             code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$API_URL$path")"
             echo "$code $path"
             [[ "$code" == 200 ]] || fail=1
           done
-          slugs="$(curl -sf --max-time 60 "$API_URL/api/overview" | jq -r '.[] | select(.featured == true) | .slug')"
-          [[ -n "$slugs" ]] || { echo "::error::no featured slugs in /api/overview"; exit 1; }
+          featured="$(curl -sf --max-time 60 "$API_URL/api/overview" | jq -r '.[] | select(.featured == true) | .slug')"
+          [[ -n "$featured" ]] || { echo "::error::no featured slugs in /api/overview"; exit 1; }
+          signalled="$(curl -sf --max-time 60 "$API_URL/api/signals" | jq -r '(map(.known) | max) as $latest | .[] | select(.known == $latest) | .slug')" || signalled=""
+          slugs="$(printf '%s\n%s\n' "$featured" "$signalled" | sort -u | sed '/^$/d')"
+          echo "warming $(wc -l <<<"$slugs" | tr -d ' ') instruments"
           export API_URL
           results="$(printf '%s\n' $slugs | xargs -P 4 -I{} sh -c 'echo "$(curl -s -o /dev/null -w "%{http_code} %{time_total}s" --max-time 60 "$API_URL/api/bars/{}") /api/bars/{}"')"
           echo "$results"

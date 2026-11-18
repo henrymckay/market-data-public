@@ -211,6 +211,7 @@ export interface DayTiles {
 
 /** The four tiles over rows already scoped to the asset class. */
 export const dayTiles = (rows: readonly Signal[], chosen: string): DayTiles => {
+  if (chosen === "") return { day: 0, gradeA: 0, heldOf: 0, heldShare: null, monthly: 0, weekly: 0 };
   const today = rows.filter((row) => row.known === chosen);
   const since = shiftDays(chosen, -HELD_WINDOW_DAYS);
   const window = rows.filter((row) => row.known > since && row.known <= chosen && row.held !== null);

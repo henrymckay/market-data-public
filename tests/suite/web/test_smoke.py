@@ -1,3 +1,7 @@
+import json
+import urllib.request
+
+import playwright.sync_api
 import pytest
 
 pytestmark = pytest.mark.slow
@@ -7,7 +11,10 @@ _READY = "html[data-ready='1']"
 
 def _open(page, served, query=""):
     page.goto(f"{served[0]}{query}")
-    page.wait_for_selector(_READY, timeout=30_000)
+    try:
+        page.wait_for_selector(_READY, timeout=30_000)
+    except playwright.sync_api.TimeoutError:
+        pytest.fail(f"never ready: {page.errors}")
 
 
 def test_when_markets_opens_then_tiles_charts_and_table_draw_without_error(
@@ -190,3 +197,140 @@ def test_when_the_scheme_is_toggled_then_it_is_kept_across_a_reload(page, served
     page.wait_for_selector(_READY)
 
     assert page.evaluate("document.documentElement.classList.contains('dark')") is True
+
+
+def _signals(served):
+    with urllib.request.urlopen("http://127.0.0.1:8788/api/signals") as response:
+        return json.loads(response.read())
+
+
+def _push_link(signal):
+    day, event = signal["day"], signal["event"]
+    tf = signal["timeframe"]
+    rng = {"d": "1Y", "w": "5Y", "m": "Max"}[tf]
+    return f"?view=ticker&t={signal['ticker']}&tf={tf}&range={rng}&sig={day}.{event}"
+
+
+def test_when_signals_opens_then_tiles_tables_and_the_caption_draw_without_error(
+    page, served
+):
+    _open(page, served, "?view=signals&grade=all")
+
+    assert page.get_by_text("Graded A", exact=True).is_visible()
+    assert page.get_by_role("heading", name="Recent signals").is_visible()
+    assert page.locator("tbody tr").count() >= 1
+    assert page.get_by_role("heading", name="Edge over any bar (pp)").is_visible()
+    assert page.get_by_text("survivorship flatters the long side").is_visible()
+    assert page.errors == []
+
+
+def test_when_a_digest_link_opens_then_its_class_and_day_are_chosen(page, served):
+    signal = next(s for s in _signals(served) if s["asset_class"] == "stock")
+
+    _open(page, served, f"?view=signals&cls=stock&day={signal['known']}&grade=all")
+
+    assert (
+        page.get_by_role("group", name="Asset class")
+        .get_by_role("button", name="Stocks")
+        .get_attribute("aria-pressed")
+        == "true"
+    )
+    assert page.locator("select").input_value() == signal["known"]
+
+
+def test_when_a_timeframe_filter_is_set_then_the_link_and_rows_follow(page, served):
+    _open(page, served, "?view=signals&grade=all")
+
+    page.get_by_role("group", name="Timeframe").get_by_role("button", name="W").click()
+    page.wait_for_selector(_READY)
+
+    assert "tf=w" in page.url
+    cells = (
+        page.locator("table")
+        .first.locator("tbody tr td:nth-child(4)")
+        .all_inner_texts()
+    )
+    assert cells
+    assert set(cells) <= {"W"}
+
+
+def test_when_the_signals_are_empty_then_the_first_nightly_is_named(page, served):
+    page.route(
+        "**/api/signals*",
+        lambda route: route.fulfill(
+            body="[]",
+            content_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        ),
+    )
+
+    _open(page, served, "?view=signals")
+
+    assert page.get_by_text("No signals yet").first.is_visible()
+
+
+def test_when_the_signals_fail_then_the_card_says_so_and_a_retry_recovers(page, served):
+    down = {"on": True}
+
+    def handler(route):
+        route.abort() if down["on"] else route.continue_()
+
+    page.route("**/api/signals*", handler)
+    _open(page, served, "?view=signals")
+    assert (
+        page.get_by_role("alert")
+        .get_by_text("Couldn\u2019t load the signals")
+        .is_visible()
+    )
+
+    down["on"] = False
+    page.get_by_role("button", name="Try again").click()
+    page.wait_for_selector("tbody tr")
+
+
+def test_when_a_signal_row_is_opened_then_the_chart_shows_its_level_and_stop(
+    page, served
+):
+    _open(page, served, "?view=signals&grade=all")
+
+    page.locator("tbody tr").first.click()
+    page.wait_for_selector(_READY)
+
+    assert "sig=" in page.url
+    assert page.get_by_test_id("signal-note").is_visible()
+    assert page.locator("[data-lines]").first.get_attribute("data-lines") in {"1", "2"}
+
+
+def test_when_a_push_link_opens_then_the_level_is_drawn_and_the_signal_marked(
+    page, served
+):
+    signal = next(s for s in _signals(served) if s["timeframe"] == "d")
+
+    _open(page, served, _push_link(signal))
+
+    chart = page.locator("[data-lines]").first
+    assert chart.get_attribute("data-lines") in {"1", "2"}
+    assert int(chart.get_attribute("data-signals")) >= 1
+    assert page.get_by_test_id("signal-note").is_visible()
+    assert page.errors == []
+
+
+def test_when_the_timeframe_is_weekly_then_weekly_candles_and_signals_show(
+    page, served
+):
+    _open(page, served, "?view=ticker&t=AAPL")
+
+    page.get_by_role("group", name="Timeframe").get_by_role("button", name="W").click()
+    page.wait_for_selector(_READY)
+
+    assert "tf=w" in page.url
+    assert page.get_by_role("heading", name="Apple, weekly candles").is_visible()
+    assert page.get_by_role("heading", name="Signals, weekly").is_visible()
+    assert page.errors == []
+
+
+def test_when_markets_opens_then_each_row_has_a_trend_in_words(page, served):
+    _open(page, served)
+
+    assert page.get_by_role("columnheader", name="Trend").is_visible()
+    assert page.locator("tbody tr").first.locator("text=/Daily trend/").count() == 1
