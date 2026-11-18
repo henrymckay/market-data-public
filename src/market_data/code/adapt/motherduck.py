@@ -51,6 +51,30 @@ select adj_close, close, day, high, last_day, low, open, ticker, timeframe, volu
 from period_bars
 """
 
+_SELECT_SIGNALS = """
+select
+    aligned, atr, close, day, direction, event, grade, held_to_date, id, known,
+    level, margin_atr, return_to_date, rules, score, stop, swing_atr, ticker,
+    timeframe, trend_swings, volume_ratio
+from signals
+where known >= ?
+"""
+
+_SELECT_CHART_BARS = """
+select close, day, high, low, open
+from (select * from bars where ticker = ? order by day desc limit ?)
+order by day
+"""
+
+_SELECT_CHART_PERIODS = """
+select close, day, high, low, open
+from (
+    select * from period_bars where ticker = ? and timeframe = ?
+    order by day desc limit ?
+)
+order by day
+"""
+
 _SELECT_MISSING = """
 select ticker
 from tickers
@@ -155,6 +179,73 @@ class Store:
         return self.connection.execute(
             "select day, metric, ticker, value from metrics"
         ).pl()
+
+    @_timed
+    def read_signals(self, since: datetime.date) -> polars.DataFrame:
+        """Return the stored signals known on or after `since`, every grade."""
+        return self.connection.execute(_SELECT_SIGNALS, [since]).pl()
+
+    @_timed
+    def read_signal_stats(self) -> polars.DataFrame:
+        """Return every `signal_stats` row."""
+        return self.connection.execute("select * from signal_stats").pl()
+
+    @_timed
+    def read_sent(self) -> polars.DataFrame:
+        """Return `id` of every signal a sent message named."""
+        return self.connection.execute(
+            "select distinct id from alerts where kind <> 'health'"
+        ).pl()
+
+    @_timed
+    def read_alert_state(self) -> str | None:
+        """Return the recorded health state, or none before any."""
+        row = self.connection.execute(
+            "select state from alert_state where key = 'health'"
+        ).fetchone()
+        return None if row is None else row[0]
+
+    @_timed
+    def read_chart_bars(
+        self, ticker: str, timeframe: str, limit: int
+    ) -> polars.DataFrame:
+        """Return the last `limit` bars of a timeframe, oldest first."""
+        return self.connection.execute(
+            _SELECT_CHART_BARS if timeframe == "d" else _SELECT_CHART_PERIODS,
+            [ticker, limit] if timeframe == "d" else [ticker, timeframe, limit],
+        ).pl()
+
+    @_timed
+    def read_chart_pivots(self, ticker: str, timeframe: str) -> polars.DataFrame:
+        """Return the pivots of a timeframe: `day`, `kind`, `label` and `price`."""
+        return self.connection.execute(
+            "select day, kind, label, price from pivots "
+            "where ticker = ? and timeframe = ? order by day",
+            [ticker, timeframe],
+        ).pl()
+
+    @_timed
+    def append_alerts(self, rows: polars.DataFrame) -> None:
+        """Append `alerts` rows, one per signal a sent message named."""
+        self.connection.register("incoming_alerts", rows.to_arrow())
+        self.connection.execute(
+            "insert into alerts (id, kind, message, sent, title) "
+            "select id, kind, message, sent, title from incoming_alerts"
+        )
+
+    @_timed
+    def replace_alert_state(
+        self, *, changed: datetime.datetime, detail: str, state: str
+    ) -> None:
+        """Replace the one `alert_state` row."""
+        self.connection.execute("begin transaction")
+        self.connection.execute("delete from alert_state")
+        self.connection.execute(
+            "insert into alert_state (changed, detail, key, state) "
+            "values (?, ?, 'health', ?)",
+            [changed, detail, state],
+        )
+        self.connection.execute("commit")
 
     @_timed
     def read_rejected_counts(self) -> polars.DataFrame:

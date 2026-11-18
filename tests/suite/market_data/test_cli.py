@@ -141,7 +141,7 @@ def test_when_a_token_is_set_then_no_output_or_log_line_holds_it(
 
 
 def test_when_a_line_holds_the_secret_then_logging_replaces_it(capsys):
-    logging_.configure(level=logging.INFO, secret="s3cret-value")
+    logging_.configure(level=logging.INFO, secrets=["s3cret-value"])
 
     logging.getLogger("market_data").info("connecting with s3cret-value now")
 

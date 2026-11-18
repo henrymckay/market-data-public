@@ -65,6 +65,8 @@ def test_when_connect_then_migrations_create_the_tables_and_record_the_version(
     tables = {row[0] for row in connection.execute("show tables").fetchall()}
     version = connection.execute("select max(version) from schema_version").fetchone()
     assert tables >= {
+        "alert_state",
+        "alerts",
         "bars",
         "metrics",
         "overview",
@@ -73,7 +75,7 @@ def test_when_connect_then_migrations_create_the_tables_and_record_the_version(
         "schema_version",
         "tickers",
     }
-    assert version == (5,)
+    assert version == (6,)
 
 
 def test_when_connect_twice_then_migrations_are_applied_once(database):
@@ -81,7 +83,7 @@ def test_when_connect_twice_then_migrations_are_applied_once(database):
 
     connection = motherduck.connect(database)
 
-    assert _count(connection, "schema_version") == 5
+    assert _count(connection, "schema_version") == 6
 
 
 def test_when_replace_twice_then_the_same_rows_remain(

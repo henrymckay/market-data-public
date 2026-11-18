@@ -1,0 +1,5 @@
+# Per-source constants for the ntfy.sh alert channel (D91, D94).
+base-url: https://ntfy.sh
+timeout: 10 # seconds a request may take
+retry-waits: [5, 20] # seconds before each retry, so a send is tried three times
+pause: 1 # seconds between two messages
