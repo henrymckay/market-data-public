@@ -5,7 +5,9 @@ import barsQuery from "./queries/bars.sql";
 import latestQuery from "./queries/latest.sql";
 import overviewQuery from "./queries/overview.sql";
 import runsQuery from "./queries/runs.sql";
+import signalsQuery from "./queries/signals.sql";
 import slugsQuery from "./queries/slugs.sql";
+import statsQuery from "./queries/stats.sql";
 import {
   type Endpoint,
   type Failure,
@@ -34,6 +36,8 @@ const QUERIES: Record<Endpoint, string> = {
   latest: latestQuery,
   overview: overviewQuery,
   runs: runsQuery,
+  signals: signalsQuery,
+  stats: statsQuery,
 };
 
 interface Answer {
@@ -132,6 +136,8 @@ export async function refresh(cache: Cache, store: Store): Promise<"moved" | "sa
   await cache.put(version, "overview", await store(overviewQuery, []));
   await cache.put(version, "runs", await store(runsQuery, []));
   await cache.put(version, "slugs", await store(slugsQuery, []));
+  await cache.put(version, "signals", await store(signalsQuery, []));
+  await cache.put(version, "stats", await store(statsQuery, []));
   await cache.setVersion(version);
   return "moved";
 }

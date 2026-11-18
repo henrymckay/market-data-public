@@ -11,7 +11,7 @@ from sqlfluff.core import FluffConfig
 
 from market_data.code import operate, port, transform
 from market_data.code.adapt import motherduck
-from pytest_ import fake
+from pytest_ import fake, series
 
 _ROOT = pathlib.Path(__file__).parents[3]
 _QUERIES = _ROOT / "api" / "src" / "queries"
@@ -189,7 +189,7 @@ def test_when_bars_then_columns_oldest_first_and_agree_with_the_table(connection
     assert body["dividend"] == [0.0, 0.5, 0.5]
     assert set(body) == {
         "ticker", "day", "open", "high", "low", "close", "adj_close",
-        "volume", "dividend", "split",
+        "volume", "dividend", "split", "weekly", "monthly", "pivots", "signals",
     }  # fmt: skip
 
 
@@ -200,7 +200,137 @@ def test_when_bars_for_an_unknown_ticker_then_every_column_is_empty(connection):
     assert body["day"] == []
 
 
-@pytest.mark.parametrize("name", ["latest", "overview", "runs", "bars", "slugs"])
+@pytest.fixture
+def signalled(tmp_path, small_universe, rules, clock):
+    connection = motherduck.connect(str(tmp_path / "signalled.duckdb"))
+    store = motherduck.Store(connection)
+    bars = polars.concat(
+        [
+            series.daily_frame("AAA", series.CONFIRMED),
+            series.daily_frame("BBB", series.FAILED_ON_CLOSE),
+        ]
+    )
+    store.replace(
+        port.Load(
+            since=fake.whole(("AAA", "BBB")),
+            bars=bars,
+            fetched=_STARTED,
+            rejected=polars.DataFrame(schema=port.REJECTED),
+            universe=small_universe,
+        )
+    )
+    operate.compute_signals(bars=store.read_bars(), now=clock, rules=rules, store=store)
+    operate.compute_metrics(
+        bars=store.read_bars(),
+        now=clock,
+        store=store,
+        tolerance=0,
+        universe=small_universe,
+    )
+    return connection
+
+
+def test_when_signals_then_each_row_carries_the_signal_and_its_instrument(signalled):
+    body = _body(signalled, "signals")
+    columns = [row[0] for row in signalled.execute("describe signals").fetchall()]
+
+    assert body
+    assert all(set(row) == {*columns, "name", "asset_class", "slug"} for row in body)
+    assert {row["ticker"]: (row["name"], row["slug"]) for row in body} == {
+        "AAA": ("Alpha", "aaa"),
+        "BBB": ("Beta", "bbb"),
+    }
+    assert len(body) == signalled.execute("select count(*) from signals").fetchone()[0]
+
+
+def test_when_signals_then_newest_known_first_and_highest_score_within_a_day(
+    signalled,
+):
+    body = _body(signalled, "signals")
+    keys = [(row["known"], row["score"]) for row in body]
+
+    assert keys == sorted(keys, reverse=True)
+
+
+def test_when_signals_are_older_than_120_days_then_they_are_left_out(signalled):
+    signalled.execute(
+        "update signals set known = known + 400 where id like 'AAA|d|break_up|%'"
+    )
+    newest = signalled.execute("select max(known) from signals").fetchone()[0]
+    ids = {row["id"] for row in _body(signalled, "signals")}
+    kept = signalled.execute(
+        "select id from signals where known > ? - 120", [newest]
+    ).fetchall()
+
+    assert ids == {row[0] for row in kept}
+    assert ids != {
+        row[0] for row in signalled.execute("select id from signals").fetchall()
+    }
+
+
+def test_when_there_are_no_signals_then_the_body_is_an_empty_array(tmp_path):
+    connection = motherduck.connect(str(tmp_path / "empty.duckdb"))
+
+    assert _body(connection, "signals") == []
+    assert _body(connection, "stats") == []
+
+
+def test_when_stats_then_one_object_per_signal_stats_row(signalled):
+    body = _body(signalled, "stats")
+    count = signalled.execute("select count(*) from signal_stats").fetchone()[0]
+    columns = [row[0] for row in signalled.execute("describe signal_stats").fetchall()]
+
+    assert len(body) == count > 0
+    assert all(set(row) == set(columns) for row in body)
+
+
+def test_when_bars_then_weekly_and_monthly_columns_agree_with_period_bars(signalled):
+    body = _body(signalled, "bars", "AAA")
+    weekly = signalled.execute(
+        "select count(*), max(high) from period_bars"
+        " where ticker = 'AAA' and timeframe = 'w'"
+    ).fetchone()
+
+    assert len(body["weekly"]["day"]) == weekly[0]
+    assert max(body["weekly"]["high"]) == weekly[1]
+    assert body["weekly"]["day"] == sorted(body["weekly"]["day"])
+    assert set(body["weekly"]) == {
+        "day", "open", "high", "low", "close", "adj_close", "volume",
+    }  # fmt: skip
+    assert len(body["monthly"]["day"]) >= 3
+
+
+def test_when_bars_then_pivots_and_signals_are_the_instruments_own(signalled):
+    body = _body(signalled, "bars", "AAA")
+
+    assert {row["timeframe"] for row in body["pivots"]} >= {"d"}
+    assert set(body["pivots"][0]) == {
+        "timeframe", "kind", "label", "day", "price", "confirmed",
+    }  # fmt: skip
+    assert {row["event"] for row in body["signals"]} >= {"break_up", "confirm_up"}
+    assert set(body["signals"][0]) == {
+        "id", "timeframe", "event", "day", "known", "level", "stop", "grade", "score",
+    }  # fmt: skip
+    assert all(row["id"].startswith("AAA|") for row in body["signals"])
+
+
+def test_when_bars_has_no_structure_then_the_new_fields_are_empty(connection):
+    body = _body(connection, "bars", "AAA")
+
+    assert body["pivots"] == []
+    assert body["signals"] == []
+    assert body["weekly"]["day"] != []
+
+
+def test_when_bars_for_an_unknown_ticker_then_weekly_and_monthly_are_empty(connection):
+    body = _body(connection, "bars", "NOPE")
+
+    assert body["weekly"]["day"] == body["monthly"]["day"] == []
+
+
+@pytest.mark.parametrize(
+    "name", ["latest", "overview", "runs", "bars", "slugs", "signals", "stats"]
+)
 def test_when_linted_then_each_query_follows_the_house_style(name):
     violations = lint(_read(name), config=FluffConfig.from_path(str(_ROOT)))
 

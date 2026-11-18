@@ -9,7 +9,7 @@ import typing
 import duckdb
 
 _QUERIES = pathlib.Path(__file__).parents[2] / "api" / "src" / "queries"
-_DATA = {"latest", "overview", "runs"}
+_DATA = {"latest", "overview", "runs", "signals", "stats"}
 _PREFIX = "/api/bars/"
 
 
