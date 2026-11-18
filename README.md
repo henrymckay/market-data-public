@@ -1,7 +1,10 @@
 # market-data-public
 
-A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance` and stores them in MotherDuck.
-A static dashboard reads the exported data; the scheduled GitHub Actions run and the deploy arrive in later milestones (see `PLAN.md`); this is a throwaway end-to-end test.
+A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance`, stores them in MotherDuck, and publishes a static dashboard built from that store; a throwaway end-to-end test.
+
+**Live dashboard: <https://henrymckay.github.io/market-data-public/>**
+
+![The Markets screen: five headline tiles, a sector treemap, leaders and laggards, and the table of every instrument](docs/screenshot.png)
 
 ## Run it
 
@@ -28,7 +31,13 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `export --output web/public/data` writes the dashboard's data (`overview.parquet`, `bars/<slug>.parquet`, `runs.parquet`, `latest.json`) and prints a `path,rows,bytes` row per file.
 - Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
-`.github/workflows/nightly.yml` runs `nightly` then `status` at 02:17 UTC every day and on demand, with the repository secret `MOTHERDUCK_TOKEN` as `motherduck_token`; `PLAN.md` (M2) lists the steps still to take before it can run.
+`.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand, in three jobs:
+
+- `nightly` runs `nightly`, then `status`, then `export`, and hands the site data to the next job as an artifact; it is the only job that holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
+- `site` builds `web/` over that artifact.
+- `deploy` publishes it to GitHub Pages.
+
+Run it by hand with `gh workflow run nightly.yml --ref main`.
 
 Every night replaces each answering instrument's whole history, so a re-run is safe and leaves the same rows.
 
@@ -57,3 +66,45 @@ uv run pytest -m real   # one run against Yahoo itself
 uv run npm --prefix web run typecheck && uv run npm --prefix web run lint && uv run npm --prefix web test
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" uv run pytest -m slow   # browser smokes over web/dist; build first
 ```
+
+## Query the store
+
+The data sits in the MotherDuck database `market_data`; open it with the token in the environment (`motherduck_token="$(security find-generic-password -a "$USER" -s motherduck-token -w)" duckdb md:market_data`) and run:
+
+How many bars and instruments are stored:
+
+```sql
+select count(*) as bars, count(distinct ticker) as tickers from bars;
+```
+
+An instrument's latest five closes:
+
+```sql
+select day, close, adj_close from bars where ticker = 'AAPL' order by day desc limit 5;
+```
+
+The ten best instruments over one month:
+
+```sql
+select ticker, value as return_1m from metrics where metric = 'return_1m' order by value desc limit 10;
+```
+
+The last five nightly runs:
+
+```sql
+select ended, source, outcome, failed_items, rows from runs order by ended desc limit 5;
+```
+
+## Tear it down
+
+Each step is irreversible, so run them yourself when the test is over:
+
+```bash
+gh repo delete henrymckay/market-data-public --yes        # the repository, its Actions runs, the secret and the Pages site
+motherduck_token="$(security find-generic-password -a "$USER" -s motherduck-token -w)" \
+  duckdb md: -c "drop database market_data"               # the stored data
+security delete-generic-password -a "$USER" -s motherduck-token   # the local copy of the token
+```
+
+Then revoke the token in MotherDuck's settings (Settings, Access tokens), since the repository secret held a copy of it.
+The schedule is disabled by GitHub after 60 days without repository activity, so a forgotten copy stops itself.
