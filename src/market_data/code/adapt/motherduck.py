@@ -53,6 +53,13 @@ _SELECT_BARS = """
 select adj_close, close, day, high, low, ticker, volume from bars
 """
 
+_SELECT_PERIOD_BARS = """
+select adj_close, close, day, high, last_day, low, open, ticker, timeframe, volume
+from period_bars
+"""
+
+_SIGNAL_TABLES = ("pivots", "signals", "outcomes", "signal_stats", "structure")
+
 _SELECT_MISSING = """
 select ticker
 from tickers
@@ -140,6 +147,18 @@ class Store:
         return self.connection.execute(_SELECT_BARS).pl()
 
     @_timed
+    def read_period_bars(self) -> polars.DataFrame:
+        """Return every weekly and monthly bar, from the `period_bars` view."""
+        return self.connection.execute(_SELECT_PERIOD_BARS).pl()
+
+    @_timed
+    def read_structure(self) -> polars.DataFrame:
+        """Return each instrument's structure on each timeframe."""
+        return self.connection.execute(
+            "select state, ticker, timeframe from structure"
+        ).pl()
+
+    @_timed
     def read_metrics(self) -> polars.DataFrame:
         """Return every stored metric, long."""
         return self.connection.execute(
@@ -206,6 +225,43 @@ class Store:
             self.connection.execute(_INSERT_METRICS)
             self.connection.execute("delete from overview")
             self.connection.execute(_INSERT_OVERVIEW)
+            self.connection.execute("commit")
+        except duckdb.Error as failure:
+            self.connection.execute("rollback")
+            raise error.StoreError("The load failed and was rolled back") from failure
+
+    @_timed
+    def replace_signals(self, computed: transform.Computed) -> None:
+        """Replace the five signal tables, as one unit.
+
+        :param computed: The new rows of every table.
+        :raises StoreError: If the transaction fails; it is rolled back.
+        """
+        tables = {
+            "outcomes": computed.outcomes,
+            "pivots": computed.pivots,
+            "signal_stats": computed.signal_stats,
+            "signals": computed.signals,
+            "structure": computed.structure,
+        }
+        for name, frame in tables.items():
+            self.connection.register(f"incoming_{name}", frame.to_arrow())
+        self.connection.execute("begin transaction")
+        try:
+            for name in _SIGNAL_TABLES:
+                columns = ", ".join(
+                    row[0]
+                    for row in self.connection.execute(
+                        "select column_name from duckdb_columns() "
+                        "where table_name = ? order by column_index",
+                        [name],
+                    ).fetchall()
+                )
+                self.connection.execute(f"delete from {name}")
+                self.connection.execute(
+                    f"insert into {name} ({columns}) "
+                    f"select {columns} from incoming_{name}"
+                )
             self.connection.execute("commit")
         except duckdb.Error as failure:
             self.connection.execute("rollback")

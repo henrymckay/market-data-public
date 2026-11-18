@@ -1,0 +1,19 @@
+atr-bars: 14
+swing-atr: {d: 2.5, w: 2.0, m: 2.0}
+horizons: {d: [5, 20, 60], w: [4, 13, 26], m: [3, 6, 12]}
+score:
+  timeframe: {d: 0, w: 1, m: 2}
+  aligned: 1
+  trend-swings: {at-least: 3, points: 1}
+  volume-ratio: {at-least: 1.5, points: 1}
+  margin-atr: {break: 0.5, confirm: 1.0, points: 1}
+grades: {A: 3, B: 2}
+alerts:
+  events: [break_up, confirm_up, break_down, confirm_down]
+  push-grade: A
+  push-cap: 10
+  digest-grade: B
+  window-days: 4
+  muted-asset-classes: []
+  base-rate-min-n: 30
+  site-url: https://henrymckay.github.io/market-data-public/

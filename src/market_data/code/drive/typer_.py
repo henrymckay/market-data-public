@@ -7,13 +7,15 @@ import datetime
 import enum
 import functools
 import logging
+import pathlib
 import time
 import typing
 
+import polars
 import typer
 
 from market_data.code import error, operate, transform
-from market_data.code.adapt import motherduck, universe, wikipedia, yahoo
+from market_data.code.adapt import motherduck, rules, universe, wikipedia, yahoo
 from market_data.code.drive import config, logging_, output
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +30,13 @@ universe_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(universe_app, name="universe")
+
+
+class Form(enum.StrEnum):
+    """How a dry run's base rates are written."""
+
+    CSV = "csv"
+    TABLE = "table"
 
 
 class Level(enum.StrEnum):
@@ -120,13 +129,23 @@ def _fetch(
     )
 
 
-def _compute(*, store: motherduck.Store) -> transform.Run:
-    """Recompute the metrics from the stored bars."""
+def _compute(*, bars: polars.DataFrame, store: motherduck.Store) -> transform.Run:
+    """Recompute the metrics from the bars."""
     return operate.compute_metrics(
+        bars=bars,
         now=_now,
         store=store,
         tolerance=yahoo.read_constants().tolerance,
         universe=universe.read_universe(),
+    )
+
+
+def _signals(
+    *, bars: polars.DataFrame, path: pathlib.Path | None, store: motherduck.Store
+) -> transform.Run:
+    """Recompute the signals from the bars under the packaged or another rules file."""
+    return operate.compute_signals(
+        bars=bars, now=_now, rules=rules.read_rules(path), store=store
     )
 
 
@@ -167,7 +186,43 @@ def compute(
     """Recompute every metric from the stored bars."""
     settings = _start(log_level)
     with _connected(settings) as store:
-        run = _compute(store=store)
+        run = _compute(bars=store.read_bars(), store=store)
+    _exit_unless_stored(run)
+
+
+@app.command()
+@_exit_on_error
+def signals(
+    dry_run: typing.Annotated[
+        bool,
+        typer.Option(help="Write nothing; show the base rates over every grade."),
+    ] = False,
+    form: typing.Annotated[
+        Form, typer.Option("--format", help="How a dry run's base rates are written.")
+    ] = Form.CSV,
+    log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
+    rules_path: typing.Annotated[
+        pathlib.Path | None,
+        typer.Option(
+            "--rules", help="Another rules file.", show_default="the packaged"
+        ),
+    ] = None,
+) -> None:
+    """Recompute every pivot, signal, outcome, base rate and structure."""
+    settings = _start(log_level)
+    with _connected(settings) as store:
+        if dry_run:
+            computed = operate.find_signals(
+                bars=store.read_bars(),
+                now=_now,
+                rules=rules.read_rules(rules_path),
+                store=store,
+            )
+            output.display_rates(
+                transform.build_rates(computed.signal_stats), table=form is Form.TABLE
+            )
+            return
+        run = _signals(bars=store.read_bars(), path=rules_path, store=store)
     _exit_unless_stored(run)
 
 
@@ -177,12 +232,14 @@ def nightly(
     full: typing.Annotated[bool, _full_option()] = False,
     log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
 ) -> None:
-    """Fetch every active instrument, then compute; the command a scheduler calls."""
+    """Fetch every active instrument, then signals, then compute; a scheduler's call."""
     settings = _start(log_level)
     with _connected(settings) as store:
         fetched = _fetch(None, full=full, store=store)
-        computed = _compute(store=store)
-    _exit_unless_stored(fetched, computed)
+        bars = store.read_bars()
+        found = _signals(bars=bars, path=None, store=store)
+        computed = _compute(bars=bars, store=store)
+    _exit_unless_stored(fetched, found, computed)
 
 
 @app.command()

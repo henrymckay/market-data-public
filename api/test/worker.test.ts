@@ -4,7 +4,8 @@ import { type Env, createWorker, refresh } from "../src/worker";
 import { kvCache } from "../src/cache";
 import { StoreUnavailableError } from "../src/error";
 
-const LATEST = '{"day":"2026-11-17","ended":"2026-11-18T02:19:41Z","outcome":"stored","rows":9}';
+const LATEST =
+  '{"day":"2026-11-17","ended":"2026-11-18T02:19:41Z","outcome":"stored","rows":9,"version":"2026-11-18T02:25:07Z"}';
 const OVERVIEW = '[{"ticker":"^GSPC","slug":"gspc"},{"ticker":"AAPL","slug":"aapl"},{"ticker":"BTC-USD","slug":"btc-usd"}]';
 const SLUGS = '{"gspc":"^GSPC","aapl":"AAPL","btc-usd":"BTC-USD"}';
 const BARS = '{"ticker":"^GSPC","day":["2026-11-16"]}';
@@ -56,7 +57,7 @@ describe("data endpoints", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe(OVERVIEW);
-    expect(response.headers.get("ETag")).toBe('"2026-11-18T02:19:41Z"');
+    expect(response.headers.get("ETag")).toBe('"2026-11-18T02:25:07Z"');
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=60");
     expect(response.headers.get("Content-Type")).toBe("application/json");
   });
@@ -112,7 +113,7 @@ describe("data endpoints", () => {
     const before = calls.length;
 
     const response = await worker.fetch(
-      get("/api/overview", { headers: { "If-None-Match": '"2026-11-18T02:19:41Z"' } }),
+      get("/api/overview", { headers: { "If-None-Match": '"2026-11-18T02:25:07Z"' } }),
       testEnv(),
     );
 
@@ -123,13 +124,24 @@ describe("data endpoints", () => {
   it("serves a new version's body from the store again", async () => {
     const first = fakeStore();
     await createWorker(() => first.store).fetch(get("/api/runs"), testEnv());
-    const second = fakeStore({ latest: LATEST.replace("02:19:41", "02:21:00"), runs: '[{"n":2}]' });
+    const second = fakeStore({ latest: LATEST.replace('"version":"2026-11-18T02:25:07Z"', '"version":"2026-11-18T02:31:00Z"'), runs: '[{"n":2}]' });
     await refresh(kvCache(testEnv().CACHE), second.store);
 
     const response = await createWorker(() => second.store).fetch(get("/api/runs"), testEnv());
 
     expect(await response.text()).toBe('[{"n":2}]');
-    expect(response.headers.get("ETag")).toBe('"2026-11-18T02:21:00Z"');
+    expect(response.headers.get("ETag")).toBe('"2026-11-18T02:31:00Z"');
+  });
+
+  it("keeps the version when only the yahoo run's end moves", async () => {
+    const first = fakeStore();
+    const worker = createWorker(() => first.store);
+    await worker.fetch(get("/api/runs"), testEnv());
+    const second = fakeStore({ latest: LATEST.replace("02:19:41", "02:21:00") });
+
+    const outcome = await refresh(kvCache(testEnv().CACHE), second.store);
+
+    expect(outcome).toBe("same");
   });
 
   it("names the version none before any run", async () => {
@@ -240,7 +252,7 @@ describe("when MotherDuck fails", () => {
 
     await down.scheduled({} as ScheduledController, testEnv());
 
-    expect(await kvCache(testEnv().CACHE).version()).toBe("2026-11-18T02:19:41Z");
+    expect(await kvCache(testEnv().CACHE).version()).toBe("2026-11-18T02:25:07Z");
   });
 });
 
@@ -252,9 +264,9 @@ describe("the cron", () => {
     await worker.scheduled({} as ScheduledController, testEnv());
     const cache = kvCache(testEnv().CACHE);
 
-    expect(await cache.version()).toBe("2026-11-18T02:19:41Z");
-    expect(await cache.get("2026-11-18T02:19:41Z", "overview")).toBe(OVERVIEW);
-    expect(await cache.get("2026-11-18T02:19:41Z", "slugs")).toBe(SLUGS);
+    expect(await cache.version()).toBe("2026-11-18T02:25:07Z");
+    expect(await cache.get("2026-11-18T02:25:07Z", "overview")).toBe(OVERVIEW);
+    expect(await cache.get("2026-11-18T02:25:07Z", "slugs")).toBe(SLUGS);
     expect(calls.map((call) => call.name)).toEqual(["latest", "overview", "runs", "slugs"]);
   });
 

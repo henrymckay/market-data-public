@@ -33,6 +33,7 @@ def build_overview(
     bars: polars.DataFrame,
     metrics: polars.DataFrame,
     rejected: polars.DataFrame,
+    structure: polars.DataFrame,
     tickers: polars.DataFrame,
 ) -> polars.DataFrame:
     """Return one row per instrument: its identity, metrics, coverage and sparkline.
@@ -45,6 +46,7 @@ def build_overview(
     :param bars: Stored bars, with `adj_close`, `day` and `ticker`.
     :param metrics: Long metrics: `metric`, `ticker`, `value`.
     :param rejected: Rejected rows per instrument: `ticker`, `rejected`.
+    :param structure: Each instrument's `state` per `timeframe`, as stored.
     :param tickers: The stored universe.
     :returns: The overview, sorted by ticker.
     """
@@ -57,6 +59,15 @@ def build_overview(
             for name in METRICS
         ),
     )
+    trends = structure.group_by("ticker").agg(
+        *(
+            polars.col("state")
+            .filter(polars.col("timeframe").eq(name))
+            .first()
+            .alias(f"trend_{name}")
+            for name in ("d", "w", "m")
+        )
+    )
     ordered = bars.sort("ticker", "day")
     coverage = ordered.group_by("ticker").agg(
         bar_count=polars.len(),
@@ -68,6 +79,7 @@ def build_overview(
         tickers.join(wide, on="ticker", how="left")
         .join(coverage, on="ticker", how="left")
         .join(rejected, on="ticker", how="left")
+        .join(trends, on="ticker", how="left")
         .with_columns(
             bar_count=polars.col("bar_count").fill_null(0),
             rejected=polars.col("rejected").fill_null(0),
