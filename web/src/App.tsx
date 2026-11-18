@@ -3,6 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useSt
 import { Header } from "./components/Header";
 import { SearchDialog } from "./components/SearchDialog";
 import { Block, SlowNote } from "./components/Status";
+import { loadBars } from "./lib/data";
 import { judge } from "./lib/freshness";
 import { useReady } from "./lib/ready";
 import { MAX_COMPARE, useRoute, VIEW_LABELS } from "./lib/route";
@@ -67,7 +68,7 @@ export default function App() {
 
   return (
     <>
-      <Header view={route.view} onView={(view) => update({ view })} onSearch={() => setSearching(true)} freshness={freshness} lastDay={lastDay} now={now} />
+      <Header view={route.view} onView={(view) => update({ view })} onSearch={() => setSearching(true)} freshness={freshness} ageUnknown={data.runs.status === "error"} lastDay={lastDay} now={now} />
       <main className="mx-auto max-w-[1280px] px-3 py-3 sm:px-4 sm:py-4">
         {data.overview.status === "loading" && <SlowNote />}
         <Suspense fallback={<Holding />}>
@@ -82,6 +83,7 @@ export default function App() {
         instruments={searchable}
         onClose={() => setSearching(false)}
         onPick={(item) => pick(item.ticker)}
+        onHighlight={(item) => void loadBars(item.slug, data.version).catch(() => undefined)}
         hint={route.view === "compare" ? "Enter adds to the comparison" : "Enter opens the instrument"}
       />
     </>
