@@ -151,11 +151,11 @@ function RatesTable({ rows }: { rows: Stat[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.event}|${row.timeframe}`} className={cn(row.n < MIN_SAMPLE && "text-muted-foreground")} title={row.n < MIN_SAMPLE ? `Fewer than ${MIN_SAMPLE} signals: read with care` : undefined}>
+            <tr key={`${row.event}|${row.timeframe}`} className={cn(row.n < MIN_SAMPLE && "text-text-2")} title={row.n < MIN_SAMPLE ? `Fewer than ${MIN_SAMPLE} signals: read with care` : undefined}>
               <td className="h-9 whitespace-nowrap border-t px-3">{EVENT_WORDS[row.event]}</td>
               <td className="h-9 border-t px-3">{row.timeframe.toUpperCase()}</td>
               <td className="h-9 border-t px-3 text-right num">{row.horizon}</td>
-              <td className="h-9 border-t px-3 text-right num">{formatInteger(row.n)}</td>
+              <td className="h-9 border-t px-3 text-right num">{formatInteger(row.n)}{row.n < MIN_SAMPLE && <span className="ml-1 text-xs">(low)</span>}</td>
               <td className="h-9 border-t px-3 text-right num">{share(row.hitRate)}</td>
               <td className="h-9 border-t px-3 text-right num">{share(row.baselineHit)}</td>
               <td className="h-9 border-t px-3 text-right"><Delta value={row.edge} text={row.edge === null ? null : formatPercent(row.edge)} /></td>

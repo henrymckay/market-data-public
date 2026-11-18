@@ -158,7 +158,7 @@ export function CandleChart({ series, structure, assetClass, tokens: t, range, m
       else if (series.dividend[i]! > 0) marks.push({ color: t.series[2]!, position: "belowBar", shape: "circle", size: 0.6, time: series.days[i]! });
     }
     for (const pivot of visible) {
-      marks.push({ color: t.muted, position: pivot.kind === "high" ? "aboveBar" : "belowBar", shape: "circle", size: 0.3, text: pivot.label!, time: pivot.day });
+      marks.push({ color: t.text2, position: pivot.kind === "high" ? "aboveBar" : "belowBar", shape: "circle", size: 0.3, text: pivot.label!, time: pivot.day });
     }
     for (const mark of structure.marks) {
       if (!indexOf.has(mark.day)) continue;
@@ -167,7 +167,7 @@ export function CandleChart({ series, structure, assetClass, tokens: t, range, m
         color: up ? t.up : t.down,
         position: up ? "belowBar" : "aboveBar",
         shape: up ? "arrowUp" : "arrowDown",
-        size: structure.selected?.id === mark.id ? 2 : 1,
+        size: structure.selected?.id === mark.id ? 1.3 : 1,
         text: EVENT_SHORT[mark.event],
         time: mark.day,
       });
