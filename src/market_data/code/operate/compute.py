@@ -15,7 +15,7 @@ def compute_metrics(
     tolerance: int,
     universe: polars.DataFrame,
 ) -> transform.Run:
-    """Recompute every metric from the stored bars, replacing the stored metrics.
+    """Recompute every metric from the stored bars, replacing metrics and overview.
 
     Active instruments with no bars are failed items; when none has bars,
     nothing is replaced and a failed run is recorded.
@@ -27,7 +27,8 @@ def compute_metrics(
     :returns: The run's manifest row, already appended to the store.
     """
     started = now()
-    metrics = store.read_bars().pipe(transform.build_metrics)
+    bars = store.read_bars()
+    metrics = transform.build_metrics(bars)
     measured = set(metrics.get_column("ticker").to_list())
     active = set(transform.active_tickers(universe))
     answered = len(active & measured)
@@ -37,7 +38,13 @@ def compute_metrics(
     )
     stored = outcome is not transform.Outcome.FAILED
     if stored:
-        store.replace_metrics(metrics)
+        overview = transform.build_overview(
+            bars=bars,
+            metrics=metrics,
+            rejected=store.read_rejected_counts(),
+            tickers=store.read_tickers(),
+        )
+        store.replace_metrics(metrics, overview)
     last_day = started.astimezone(datetime.UTC).date() - datetime.timedelta(days=1)
     run = transform.Run(
         day=last_day,

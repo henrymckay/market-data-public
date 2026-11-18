@@ -62,3 +62,16 @@ def test_when_the_paused_instrument_has_no_bars_then_it_is_not_a_failure(
     run, _ = _compute(_bars(make_bars, "AAA", "^TNX"), paused, clock)
 
     assert run.outcome is transform.Outcome.STORED
+
+
+def test_when_metrics_are_stored_then_the_overview_has_a_row_per_instrument(
+    make_bars, small_universe, clock
+):
+    bars = _bars(make_bars, "AAA", "BBB", "^TNX")
+    ledger = fake.Ledger(bars=bars, tickers=small_universe)
+
+    _compute(bars, small_universe, clock, store=ledger)
+
+    overview = ledger.overviews[0]
+    assert overview.get_column("ticker").to_list() == ["AAA", "BBB", "^TNX"]
+    assert overview.get_column("slug").to_list() == ["aaa", "bbb", "tnx"]

@@ -34,6 +34,9 @@ def _load(make_bars, universe, tickers, *, close=10.0, rejected_for=()):
     )
 
 
+_OVERVIEW_SCHEMA = {"ticker": polars.String, "bar_count": polars.Int64}
+
+
 def _count(connection, table):
     return connection.execute(f"select count(*) from {table}").fetchone()[0]
 
@@ -63,12 +66,13 @@ def test_when_connect_then_migrations_create_the_tables_and_record_the_version(
     assert tables >= {
         "bars",
         "metrics",
+        "overview",
         "rejected",
         "runs",
         "schema_version",
         "tickers",
     }
-    assert version == (2,)
+    assert version == (3,)
 
 
 def test_when_connect_twice_then_migrations_are_applied_once(database):
@@ -76,7 +80,7 @@ def test_when_connect_twice_then_migrations_are_applied_once(database):
 
     connection = motherduck.connect(database)
 
-    assert _count(connection, "schema_version") == 2
+    assert _count(connection, "schema_version") == 3
 
 
 def test_when_replace_twice_then_the_same_rows_remain(
@@ -187,8 +191,9 @@ def test_when_replace_metrics_twice_then_the_table_holds_the_latest_rows(databas
         schema=schema,
     )
 
-    store.replace_metrics(first)
-    store.replace_metrics(second)
+    empty = polars.DataFrame(schema=_OVERVIEW_SCHEMA)
+    store.replace_metrics(first, empty)
+    store.replace_metrics(second, empty)
 
     rows = store.connection.execute(
         "select ticker, metric, value from metrics"
@@ -236,3 +241,30 @@ def test_when_read_runs_in_another_zone_then_times_come_back_in_utc(database):
     assert runs.schema["ended"] == polars.Datetime("us", "UTC")
     assert runs.row(0, named=True)["ended"].hour == _STARTED.hour
     assert runs.row(0, named=True)["ended"].minute == _STARTED.minute + 2
+
+
+def test_when_replace_metrics_then_the_overview_table_takes_the_cores_columns(
+    database, make_bars, small_universe
+):
+    store = motherduck.Store(motherduck.connect(database))
+    bars = make_bars(("AAA", _DAY, {}), ("BBB", _DAY, {}))
+    store.replace(_load(make_bars, small_universe, ["AAA", "BBB"]))
+    metrics = transform.build_metrics(bars)
+    overview = transform.build_overview(
+        bars=bars,
+        metrics=metrics,
+        rejected=store.read_rejected_counts(),
+        tickers=store.read_tickers(),
+    )
+
+    store.replace_metrics(metrics, overview)
+    store.replace_metrics(metrics, overview)
+
+    stored = store.connection.execute("select * from overview order by ticker").pl()
+    assert sorted(stored.columns) == sorted(overview.columns)
+    assert (
+        stored.get_column("ticker").to_list() == overview.get_column("ticker").to_list()
+    )
+    assert (
+        stored.get_column("spark").to_list() == overview.get_column("spark").to_list()
+    )

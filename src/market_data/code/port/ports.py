@@ -99,8 +99,18 @@ class MetricsStore(typing.Protocol):
         """Return every stored bar, with `BARS`' columns."""
         ...
 
-    def replace_metrics(self, metrics: polars.DataFrame) -> None:
-        """Replace the whole `metrics` table."""
+    def read_rejected_counts(self) -> polars.DataFrame:
+        """Return `ticker` and `rejected`, the quarantined rows per instrument."""
+        ...
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the stored universe."""
+        ...
+
+    def replace_metrics(
+        self, metrics: polars.DataFrame, overview: polars.DataFrame
+    ) -> None:
+        """Replace the whole `metrics` and `overview` tables, as one unit."""
         ...
 
 

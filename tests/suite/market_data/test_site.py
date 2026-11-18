@@ -238,7 +238,16 @@ def seeded(tmp_path, site_bars, small_universe):
             universe=small_universe,
         )
     )
-    store.replace_metrics(transform.build_metrics(site_bars))
+    metrics = transform.build_metrics(site_bars)
+    store.replace_metrics(
+        metrics,
+        transform.build_overview(
+            bars=site_bars,
+            metrics=metrics,
+            rejected=store.read_rejected_counts(),
+            tickers=store.read_tickers(),
+        ),
+    )
     connection.close()
     return path
 
