@@ -27,15 +27,16 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `nightly` fetches every active instrument in the universe (`src/market_data/data/transform/universe.csv`): its last month, or its whole history where the store has none, its newest stored day is over 25 days old, the last month contradicts the store (a restated close, a new dividend or split) or `--full` is given.
 - `fetch TICKER...` fetches only those instruments, the same way; `fetch` and `nightly` take `--full`.
 - `universe sync` brings the S&P 500 rows of the CSV in line with Wikipedia's list and prints `added,removed` counts; `--check` changes nothing and exits 1 when the CSV is out of date.
-- `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `compute`, on one connection.
+- `signals` recomputes every pivot, signal, outcome, base rate and structure over every stored bar, replaces the five tables in one transaction and prints its manifest row; `--rules PATH` reads another rules file, and `--dry-run` writes nothing and prints the base rates for every asset class and grade (`event,timeframe,horizon,n,hit_rate,baseline_hit,edge,held_rate`), `--format table` aligned.
+- `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `signals`, then `compute`, reading the bars once for the last two.
 - `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old.
-- `fetch`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
+- `fetch`, `signals`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
 - Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
 `.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand.
 Its `nightly` job runs `nightly`, then `status`, and holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
 It passes `--full` on Sundays, and on demand with the `full` input.
-Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest` to reach the run, then requests `/api/overview`, `/api/runs` and the `/api/bars/{slug}` of every featured instrument, so no visitor waits on a cache miss for the headline screens, and fails on any status but 200.
+Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest`'s `version` (the end of the last stored `metrics` run) to reach the run, then requests `/api/overview`, `/api/runs` and the `/api/bars/{slug}` of every featured instrument, so no visitor waits on a cache miss for the headline screens, and fails on any status but 200.
 `.github/workflows/universe.yml` runs `universe sync` at 06:00 UTC on the 1st of each month and commits `universe.csv` to `main` when it changed; its `keepalive` job enables the scheduled workflows again through the API, so GitHub's 60-day idle rule does not disable them.
 `.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, with `VITE_API_URL` from the repository variable `API_URL`.
 `.github/workflows/api.yml` tests the Worker on every push touching `api/` and deploys it from `main` with the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `MOTHERDUCK_API_TOKEN` (the read-only service account's token, uploaded as the Worker secret `MOTHERDUCK_TOKEN`).
@@ -45,6 +46,23 @@ Run it by hand with `gh workflow run nightly.yml --ref main`.
 
 Every night replaces each answering instrument's rows from the first day it fetched, so a re-run is safe and leaves the same rows.
 The log's `Store busy for N s` line is the nightly's MotherDuck usage.
+
+## Signals
+
+`signals` finds swings, trend changes and their base rates on daily, weekly and monthly bars; the rules are in `src/market_data/data/transform/monitor.yaml`, and each signal and base rate carries the first 12 hex digits of their SHA-256 as `rules`.
+A swing high (low) is a high (low) that a later close retreated from by `k` times the 14-bar ATR; it is confirmed on that close and never moves, so no signal repaints.
+A signal is a `break_up` (in a downtrend, a close above the last lower high), its `confirm_up` (the next swing low confirmed above the downtrend's last low) or its `fail_up`, and the mirrors; weekly and monthly bars count once their period has ended.
+Tables written by `signals`:
+
+- `pivots`: every confirmed swing, labelled `HH`, `LH`, `EH`, `HL`, `LL` or `EL` against the one before.
+- `signals`: one row per signal, with its level, stop, score, grade, the higher timeframe's alignment and what it has done since.
+- `outcomes`: each signal's return, best and worst excursion and whether its stop held at each horizon.
+- `signal_stats`: base rates per event, timeframe, asset class (or `all`), grade (or `all`) and horizon, with the any-bar baseline and the `edge` over it.
+- `structure`: each instrument's trend state on each timeframe, which `overview` carries as `trend_d`, `trend_w` and `trend_m`.
+- `period_bars`: the view of weekly and monthly bars the swings are found on.
+
+The base rates are in-sample and over today's index members, so they overstate what a live signal would have done.
+Compare a rules change before committing it by running `signals --dry-run` under each file.
 
 ## Dashboard
 
@@ -72,7 +90,7 @@ The root path is the docs page.
 
 | Method | Path | Returns |
 |---|---|---|
-| GET | `/api/latest` | the last stored `yahoo` run, or `null` |
+| GET | `/api/latest` | the last stored `yahoo` run and the data `version`, or `null` |
 | GET | `/api/overview` | one object per instrument: identity, coverage, every metric, a 63-bar sparkline |
 | GET | `/api/runs` | the last 90 runs, newest first |
 | GET | `/api/bars/{slug}` | one instrument's whole history, oldest first, as columns |
@@ -82,7 +100,7 @@ curl -s https://market-data-api.henrymckay.workers.dev/api/latest
 ```
 
 ```json
-{"day":"2026-11-17","ended":"2026-11-18T06:39:02Z","outcome":"stored","rows":833631}
+{"day":"2026-11-17","ended":"2026-11-18T06:39:02Z","outcome":"stored","rows":833631,"version":"2026-11-18T06:47:30Z"}
 ```
 
 An unknown slug is `404` with `{"error": "...", "code": "not_found"}`; MotherDuck being unreachable is `503` with `Retry-After`.
@@ -130,6 +148,24 @@ The ten best instruments over one month:
 
 ```sql
 select ticker, value as return_1m from metrics where metric = 'return_1m' order by value desc limit 10;
+```
+
+The base rates of every event over all instruments, best edge first:
+
+```sql
+select event, timeframe, horizon, n, hit_rate, baseline_hit, edge from signal_stats where asset_class = 'all' and grade = 'all' order by edge desc limit 10;
+```
+
+The newest signals, graded:
+
+```sql
+select ticker, timeframe, event, day, grade, score, level, stop from signals order by known desc, score desc limit 10;
+```
+
+The instruments whose weekly structure is up:
+
+```sql
+select ticker, since, last_high, last_low from structure where timeframe = 'w' and state = 'up' order by ticker;
 ```
 
 The last five nightly runs:
