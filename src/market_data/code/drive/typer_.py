@@ -15,7 +15,15 @@ import polars
 import typer
 
 from market_data.code import error, operate, transform
-from market_data.code.adapt import motherduck, rules, universe, wikipedia, yahoo
+from market_data.code.adapt import (
+    chart,
+    motherduck,
+    ntfy,
+    rules,
+    universe,
+    wikipedia,
+    yahoo,
+)
 from market_data.code.drive import config, logging_, output
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,11 +31,13 @@ _LOGGER = logging.getLogger(__name__)
 app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
 )
 universe_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     help="Keep the universe of instruments current.",
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
 )
 app.add_typer(universe_app, name="universe")
 
@@ -99,7 +109,7 @@ def _start(log_level: Level) -> config.Settings:
     """Configure logging and read the settings, once per command."""
     logging_.configure(
         level=logging.getLevelNamesMapping()[log_level.upper()],
-        secret=config.read_token_for_redaction(),
+        secrets=config.read_secrets_for_redaction(),
     )
     return config.read_settings()
 
@@ -242,17 +252,84 @@ def nightly(
     _exit_unless_stored(fetched, found, computed)
 
 
+def _topic(settings: config.Settings) -> str:
+    """Return the ntfy topic, which only a send needs.
+
+    :raises ConfigurationError: If it is not set.
+    """
+    if settings.ntfy_topic is None:
+        raise error.ConfigurationError("NTFY_TOPIC is not set")
+    return settings.ntfy_topic.get_secret_value()
+
+
+def _send_planned(
+    planned: operate.Planned, *, store: motherduck.Store, topic: str
+) -> tuple[operate.Result, ...]:
+    """Send what was planned to the topic and record it."""
+    constants = ntfy.read_constants()
+    return operate.send_alerts(
+        planned,
+        now=_now,
+        pause=lambda: time.sleep(constants.pause),
+        render=chart.draw_chart,
+        send=functools.partial(ntfy.send_message, constants=constants, topic=topic),
+        store=store,
+    )
+
+
+@app.command()
+@_exit_on_error
+def notify(
+    dry_run: typing.Annotated[
+        bool,
+        typer.Option(help="Send and record nothing; show every message whole."),
+    ] = False,
+    form: typing.Annotated[
+        Form,
+        typer.Option("--format", help="How a dry run's messages are written."),
+    ] = Form.CSV,
+    log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
+) -> None:
+    """Send the night's pushes and digests, and the health message on a change."""
+    settings = _start(log_level)
+    topic = "" if dry_run else _topic(settings)
+    with _connected(settings) as store:
+        planned = operate.plan_alerts(
+            now=_now,
+            rules=rules.read_rules(None),
+            run_url=settings.run_url,
+            store=store,
+        )
+        if dry_run:
+            output.display_messages(planned.messages, table=form is Form.TABLE)
+            return
+        results = _send_planned(planned, store=store, topic=topic)
+    output.display_results(results)
+    if any(result.status == "failed" for result in results):
+        raise typer.Exit(code=1)
+
+
 @app.command()
 @_exit_on_error
 def status(
+    alert: typing.Annotated[
+        bool,
+        typer.Option(help="Also send a health message when the verdict changed."),
+    ] = False,
     log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
 ) -> None:
     """Show the last runs' health; exit 1 when a run did not store or data is stale."""
     settings = _start(log_level)
+    topic = _topic(settings) if alert else ""
     with _connected(settings) as store:
         judged = transform.build_status(
             store.read_runs(), missing=store.read_missing(), now=_now()
         )
+        if alert:
+            planned = operate.plan_health(
+                now=_now, run_url=settings.run_url, store=store
+            )
+            _send_planned(planned, store=store, topic=topic)
     output.display_status(judged)
     if not judged.healthy:
         raise typer.Exit(code=1)
@@ -270,7 +347,7 @@ def sync(
     """Bring the CSV's S&P 500 rows in line with Wikipedia's list of members."""
     logging_.configure(
         level=logging.getLevelNamesMapping()[log_level.upper()],
-        secret=config.read_token_for_redaction(),
+        secrets=config.read_secrets_for_redaction(),
     )
     before = universe.read_universe()
     after = transform.sync_members(before, wikipedia.fetch_members())

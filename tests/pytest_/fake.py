@@ -166,3 +166,98 @@ class SignalsLedger:
         if self.failing:
             raise error.StoreError("The load failed and was rolled back")
         self.replaced.append(computed)
+
+
+@dataclasses.dataclass(slots=True)
+class AlertsLedger:
+    """An alerts store that serves the tables it was given and keeps what is written."""
+
+    runs: polars.DataFrame
+    signals: polars.DataFrame
+    stats: polars.DataFrame
+    structure: polars.DataFrame
+    tickers: polars.DataFrame
+    flat: bool = False
+    missing: tuple[str, ...] = ()
+    sent: polars.DataFrame = dataclasses.field(
+        default_factory=lambda: polars.DataFrame(schema={"id": polars.String})
+    )
+    state: str | None = None
+    alerts: list[polars.DataFrame] = dataclasses.field(
+        default_factory=list[polars.DataFrame]
+    )
+    states: list[str] = dataclasses.field(default_factory=list[str])
+
+    def append_alerts(self, rows: polars.DataFrame) -> None:
+        """Keep the rows."""
+        self.alerts.append(rows)
+
+    def read_alert_state(self) -> str | None:
+        """Return the state it was given."""
+        return self.state
+
+    def read_chart_bars(
+        self, ticker: str, timeframe: str, limit: int
+    ) -> polars.DataFrame:
+        """Return 30 weekly bars ending on the signal day, flat when told to."""
+        days = [
+            datetime.date(2026, 11, 9) - datetime.timedelta(days=7 * n)
+            for n in reversed(range(30))
+        ]
+        spread = 0.0 if self.flat else 1.0
+        return polars.DataFrame(
+            {
+                "close": [10.0] * 30,
+                "day": days,
+                "high": [10.0 + spread] * 30,
+                "low": [10.0 - spread] * 30,
+                "open": [10.0] * 30,
+            }
+        )
+
+    def read_chart_pivots(self, ticker: str, timeframe: str) -> polars.DataFrame:
+        """Return no pivots."""
+        return polars.DataFrame(
+            schema={
+                "day": polars.Date,
+                "kind": polars.String,
+                "label": polars.String,
+                "price": polars.Float64,
+            }
+        )
+
+    def read_missing(self) -> tuple[str, ...]:
+        """Return the instruments it was told lack bars."""
+        return self.missing
+
+    def read_runs(self) -> polars.DataFrame:
+        """Return the runs."""
+        return self.runs
+
+    def read_sent(self) -> polars.DataFrame:
+        """Return the ids sent so far, including this run's."""
+        appended = [rows.select("id") for rows in self.alerts]
+        return polars.concat([self.sent, *appended])
+
+    def read_signal_stats(self) -> polars.DataFrame:
+        """Return the base rates."""
+        return self.stats
+
+    def read_signals(self, since: datetime.date) -> polars.DataFrame:
+        """Return the signals known since the day."""
+        return self.signals.filter(polars.col("known").ge(since))
+
+    def read_structure(self) -> polars.DataFrame:
+        """Return the structure."""
+        return self.structure
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the universe."""
+        return self.tickers
+
+    def replace_alert_state(
+        self, *, changed: datetime.datetime, detail: str, state: str
+    ) -> None:
+        """Keep the state."""
+        self.states.append(state)
+        self.state = state
