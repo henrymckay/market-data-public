@@ -9,6 +9,3 @@ from market_data.code.port.ports import Fetched as Fetched
 from market_data.code.port.ports import Load as Load
 from market_data.code.port.ports import MetricsStore as MetricsStore
 from market_data.code.port.ports import Sink as Sink
-from market_data.code.port.ports import SiteSource as SiteSource
-from market_data.code.port.ports import SiteWriter as SiteWriter
-from market_data.code.port.ports import Written as Written

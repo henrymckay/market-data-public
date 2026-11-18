@@ -5,7 +5,7 @@ import sys
 
 import polars
 
-from market_data.code import port, transform
+from market_data.code import transform
 
 _TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -37,17 +37,4 @@ def display_status(status: transform.Status) -> None:
     """Write the status as `key,value` rows to standard output."""
     sys.stdout.write(
         polars.DataFrame(status.rows, schema=["key", "value"], orient="row").write_csv()
-    )
-
-
-def display_written(written: collections.abc.Sequence[port.Written]) -> None:
-    """Write one `path,rows,bytes` row per site file to standard output."""
-    sys.stdout.write(
-        polars.DataFrame(
-            {
-                "path": [file.path for file in written],
-                "rows": [file.rows for file in written],
-                "bytes": [file.bytes for file in written],
-            }
-        ).write_csv()
     )

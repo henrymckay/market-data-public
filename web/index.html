@@ -7,8 +7,9 @@
     <meta name="description" content="Daily prices for about ninety indices, stocks, funds, rates, currencies, commodities and crypto, refreshed every night." />
     <title>Market data</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="preload" href="./data/overview.parquet" as="fetch" crossorigin="anonymous" />
-    <link rel="preload" href="./data/runs.parquet" as="fetch" crossorigin="anonymous" />
+    <!-- D58: start the two first requests before the bundle runs; the build fills %VITE_API_URL% -->
+    <link rel="preload" href="%VITE_API_URL%/api/overview" as="fetch" crossorigin="anonymous" />
+    <link rel="preload" href="%VITE_API_URL%/api/runs" as="fetch" crossorigin="anonymous" />
     <script>
       (function () {
         var dark = matchMedia("(prefers-color-scheme: dark)").matches;

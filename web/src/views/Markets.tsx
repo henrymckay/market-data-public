@@ -223,7 +223,7 @@ export function Markets({ data, route, update }: ViewProps) {
       </div>
 
       {failed ? (
-        <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the market overview. Other screens may still work; tonight&rsquo;s run rewrites the file.</ErrorNote>
+        <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the market overview: the API didn&rsquo;t answer. Other screens may still work.</ErrorNote>
       ) : (
         <>
           {items === null ? (

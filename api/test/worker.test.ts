@@ -5,7 +5,7 @@ import { kvCache } from "../src/cache";
 import { StoreUnavailableError } from "../src/error";
 
 const LATEST = '{"day":"2026-11-17","ended":"2026-11-18T02:19:41Z","outcome":"stored","rows":9}';
-const OVERVIEW = '[{"ticker":"^GSPC","slug":"gspc"},{"ticker":"AAPL","slug":"aapl"}]';
+const OVERVIEW = '[{"ticker":"^GSPC","slug":"gspc"},{"ticker":"AAPL","slug":"aapl"},{"ticker":"BTC-USD","slug":"btc-usd"}]';
 const BARS = '{"ticker":"^GSPC","day":["2026-11-16"]}';
 const ORIGIN = "https://henrymckay.github.io";
 
@@ -67,6 +67,15 @@ describe("data endpoints", () => {
 
     expect(await first.text()).toBe(BARS);
     expect(calls.filter((call) => call.name === "bars")).toEqual([{ name: "bars", params: ["^GSPC"] }]);
+  });
+
+  it("serves an instrument whose slug keeps a hyphen, as BTC-USD's does", async () => {
+    const { store, calls } = fakeStore();
+
+    const response = await createWorker(() => store).fetch(get("/api/bars/btc-usd"), testEnv());
+
+    expect(response.status).toBe(200);
+    expect(calls.filter((call) => call.name === "bars")).toEqual([{ name: "bars", params: ["BTC-USD"] }]);
   });
 
   it("answers 304 from KV alone when If-None-Match names the version", async () => {

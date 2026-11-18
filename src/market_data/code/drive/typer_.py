@@ -7,7 +7,6 @@ import datetime
 import enum
 import functools
 import logging
-import pathlib
 import time
 import typing
 
@@ -15,7 +14,7 @@ import duckdb
 import typer
 
 from market_data.code import error, operate, transform
-from market_data.code.adapt import motherduck, site, universe, yahoo
+from market_data.code.adapt import motherduck, universe, yahoo
 from market_data.code.drive import config, logging_, output
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,21 +181,3 @@ def status(
     output.display_status(judged)
     if not judged.healthy:
         raise typer.Exit(code=1)
-
-
-@app.command()
-@_exit_on_error
-def export(
-    folder: typing.Annotated[
-        pathlib.Path,
-        typer.Option("--output", help="Folder the site data is written into."),
-    ] = pathlib.Path("web/public/data"),
-    log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
-) -> None:
-    """Write the dashboard's data files from the store; one CSV row per file."""
-    settings = _start(log_level)
-    with _connected(settings) as connection:
-        written = operate.export_site(
-            motherduck.Store(connection), writer=site.Writer(folder)
-        )
-    output.display_written(written)
