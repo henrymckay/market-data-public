@@ -67,7 +67,7 @@ export function CandleChart({ series, assetClass, tokens: t, range, ma50, ma200,
       crosshair: { mode: CrosshairMode.Normal },
       timeScale: { borderColor: tokens.current.grid, rightOffset: 3 },
     });
-    const body = instance.addSeries(CandlestickSeries, { borderVisible: false, priceLineVisible: false });
+    const body = instance.addSeries(CandlestickSeries, { borderVisible: false, lastValueVisible: false, priceLineVisible: false });
     const fifty = instance.addSeries(LineSeries, { crosshairMarkerVisible: false, lastValueVisible: false, lineWidth: 2, priceLineVisible: false, visible: false });
     const two = instance.addSeries(LineSeries, { crosshairMarkerVisible: false, lastValueVisible: false, lineWidth: 2, priceLineVisible: false, visible: false });
     chart.current = instance;

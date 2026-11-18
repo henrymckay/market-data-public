@@ -245,7 +245,7 @@ export function Markets({ data, route, update }: ViewProps) {
 
           <Card
             title="All instruments"
-            subtitle={lastDay === null ? "Daily bars" : `Prices to ${formatDay(lastDay)}; yields move in basis points`}
+            subtitle={lastDay === null ? "Daily bars" : `Prices to ${formatDay(lastDay)}; last is in each instrument's own quote unit (US dollars unless an index, rate or currency pair), and yields move in basis points`}
             actions={<Segmented label="Asset class" options={["all", ...ASSET_CLASSES]} value={route.assetClass as "all"} onChange={(assetClass) => update({ assetClass })} format={(c) => CLASS_LABEL[c] ?? c} />}
           >
             {items === null ? <Block height={420} /> : <InstrumentTable items={items} route={route} update={update} open={open} />}
