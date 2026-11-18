@@ -38,7 +38,7 @@ _RETRYABLE = (
     yfinance.exceptions.YFRateLimitError,
 )
 
-type History = collections.abc.Callable[[str], pandas.DataFrame]
+type History = collections.abc.Callable[[str, port.Period], pandas.DataFrame]
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
@@ -83,12 +83,12 @@ def build_history(
     requests: Requests,
     sleep: collections.abc.Callable[[float], None] = time.sleep,
 ) -> History:
-    """Return the getter of one instrument's full history, paced and retried.
+    """Return the getter of one instrument's history, paced and retried.
 
     :param constants: Pace and retry constants.
     :param requests: Counts every request sent, retries included.
     :param sleep: Waits between retries; a test passes a spy.
-    :returns: A function from a ticker to yfinance's raw frame.
+    :returns: A function from a ticker and a period to yfinance's raw frame.
     """
     yfinance.config.debug.hide_exceptions = False
     limiter = pyrate_limiter.Limiter(
@@ -106,21 +106,22 @@ def build_history(
         wait=tenacity.wait_exponential_jitter(initial=1, max=constants.max_wait),
     )
 
-    def attempt(ticker: str) -> pandas.DataFrame:
+    def attempt(ticker: str, period: port.Period) -> pandas.DataFrame:
         limiter.try_acquire("yahoo", timeout=60)
         requests.sent += 1
         return yfinance.Ticker(ticker).history(
-            actions=True, auto_adjust=False, interval="1d", period="max"
+            actions=True, auto_adjust=False, interval="1d", period=period
         )
 
-    def get_history(ticker: str) -> pandas.DataFrame:
-        return retrying(attempt, ticker)
+    def get_history(ticker: str, period: port.Period) -> pandas.DataFrame:
+        return retrying(attempt, ticker, period)
 
     return get_history
 
 
 def fetch_bars(
     tickers: collections.abc.Sequence[str],
+    period: port.Period,
     *,
     history: History,
     requests: Requests,
@@ -128,6 +129,7 @@ def fetch_bars(
     """Fetch every ticker's history, failing an instrument rather than the run.
 
     :param tickers: The instruments to fetch.
+    :param period: How far back: `"1mo"` or `"max"`.
     :param history: Returns one instrument's raw frame.
     :param requests: The run's request count, read once all are fetched.
     :returns: The bars that arrived and the instruments that answered nothing.
@@ -136,7 +138,7 @@ def fetch_bars(
     failed: list[port.Failure] = []
     for ticker in tickers:
         try:
-            frame = history(ticker)
+            frame = history(ticker, period)
             bars = _parse(ticker, frame) if len(frame) else None
         except yfinance.exceptions.YFTickerMissingError:
             failed.append(port.Failure(reason="no data", ticker=ticker))

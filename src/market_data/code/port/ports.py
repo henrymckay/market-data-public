@@ -37,12 +37,31 @@ UNIVERSE = polars.Schema(
     {
         "active": polars.Boolean,
         "asset_class": polars.String,
+        "featured": polars.Boolean,
         "name": polars.String,
         "quote_type": polars.String,
         "sector": polars.String,
+        "source": polars.String,
         "ticker": polars.String,
     }
 )
+
+OVERLAP = polars.Schema(
+    {
+        "adj_close": polars.Float64,
+        "close": polars.Float64,
+        "day": polars.Date,
+        "dividend": polars.Float64,
+        "split": polars.Float64,
+        "ticker": polars.String,
+    }
+)
+
+SINCE = polars.Schema({"since": polars.Date, "ticker": polars.String})
+
+LAST_DAYS = polars.Schema({"day": polars.Date, "ticker": polars.String})
+
+type Period = typing.Literal["1mo", "max"]
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
@@ -66,25 +85,38 @@ class Fetched:
 class Load:
     """What one run replaces in the store, for the instruments that answered."""
 
-    answered: tuple[str, ...]
     bars: polars.DataFrame
     fetched: datetime.datetime
     rejected: polars.DataFrame
+    since: polars.DataFrame
     universe: polars.DataFrame
 
 
-type Fetch = collections.abc.Callable[[collections.abc.Sequence[str]], Fetched]
+type Fetch = collections.abc.Callable[[collections.abc.Sequence[str], Period], Fetched]
 
 
 class Sink(typing.Protocol):
-    """Where a run's results are written."""
+    """Where a run's results are written, and the stored days it plans from."""
 
     def append_run(self, run: transform.Run) -> None:
         """Append one manifest row."""
         ...
 
+    def read_last_days(self) -> polars.DataFrame:
+        """Return `LAST_DAYS`: each stored instrument's newest day."""
+        ...
+
+    def read_overlap(
+        self, tickers: collections.abc.Sequence[str], start: datetime.date
+    ) -> polars.DataFrame:
+        """Return `OVERLAP`: the tickers' stored bars on or after `start`."""
+        ...
+
     def replace(self, load: Load) -> None:
-        """Replace the answered instruments' rows and the universe, as one unit."""
+        """Replace the answered instruments' rows from `since` on, and the universe.
+
+        The whole unit is one transaction.
+        """
         ...
 
 

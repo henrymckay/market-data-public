@@ -1,9 +1,14 @@
 # pyright: reportUnknownArgumentType=false
 """The store: MotherDuck, or a local DuckDB file, over one connection."""
 
+import collections.abc
 import dataclasses
+import datetime
+import functools
 import logging
 import re
+import time
+import typing
 from importlib import resources
 
 import duckdb
@@ -56,9 +61,51 @@ order by ticker
 """
 
 _INSERT_TICKERS = """
-insert into tickers (active, asset_class, name, quote_type, sector, ticker)
-select active, asset_class, name, quote_type, sector, ticker from incoming_tickers
+insert into tickers (
+    active, asset_class, featured, name, quote_type, sector, source, ticker
+)
+select
+    active, asset_class, featured, name, quote_type, sector, source, ticker
+from incoming_tickers
 """
+
+_SELECT_LAST_DAYS = "select max(day) as day, ticker from bars group by ticker"
+
+_SELECT_OVERLAP = """
+select adj_close, close, day, dividend, split, ticker
+from bars
+where list_contains(?, ticker) and day >= ?
+"""
+
+_DELETE_SINCE = """
+delete from {table}
+using incoming_since as plan
+where {table}.ticker = plan.ticker
+    and (plan.since is null or {table}.day is null or {table}.day >= plan.since)
+"""
+
+
+@dataclasses.dataclass(slots=True)
+class Meter:
+    """The seconds a run has spent inside store calls, connecting included."""
+
+    seconds: float = 0.0
+
+
+def _timed[**P, T](
+    work: collections.abc.Callable[typing.Concatenate[Store, P], T],
+) -> collections.abc.Callable[typing.Concatenate[Store, P], T]:
+    """Add the seconds a store method takes to its store's meter."""
+
+    @functools.wraps(work)
+    def run(store: Store, *args: P.args, **kwargs: P.kwargs) -> T:
+        opened = time.monotonic()
+        try:
+            return work(store, *args, **kwargs)
+        finally:
+            store.meter.seconds += time.monotonic() - opened
+
+    return run
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -66,7 +113,9 @@ class Store:
     """The store's sink, over a connection with the schema applied."""
 
     connection: duckdb.DuckDBPyConnection
+    meter: Meter = dataclasses.field(default_factory=Meter)
 
+    @_timed
     def append_run(self, run: transform.Run) -> None:
         """Append one manifest row."""
         self.connection.execute(
@@ -85,33 +134,52 @@ class Store:
             ],
         )
 
+    @_timed
     def read_bars(self) -> polars.DataFrame:
         """Return every stored bar the metrics read."""
         return self.connection.execute(_SELECT_BARS).pl()
 
+    @_timed
     def read_metrics(self) -> polars.DataFrame:
         """Return every stored metric, long."""
         return self.connection.execute(
             "select day, metric, ticker, value from metrics"
         ).pl()
 
+    @_timed
     def read_rejected_counts(self) -> polars.DataFrame:
         """Return `ticker` and `rejected`, the quarantined rows per instrument."""
         return self.connection.execute(
             "select ticker, count(*)::bigint as rejected from rejected group by ticker"
         ).pl()
 
+    @_timed
     def read_tickers(self) -> polars.DataFrame:
         """Return the stored universe."""
         return self.connection.execute(
-            "select active, asset_class, name, quote_type, sector, ticker from tickers"
+            "select active, asset_class, featured, name, quote_type, sector, source, "
+            "ticker from tickers"
         ).pl()
 
+    @_timed
+    def read_last_days(self) -> polars.DataFrame:
+        """Return each stored instrument's newest day, as `port.LAST_DAYS`."""
+        return self.connection.execute(_SELECT_LAST_DAYS).pl()
+
+    @_timed
+    def read_overlap(
+        self, tickers: collections.abc.Sequence[str], start: datetime.date
+    ) -> polars.DataFrame:
+        """Return the tickers' stored bars on or after `start`, as `port.OVERLAP`."""
+        return self.connection.execute(_SELECT_OVERLAP, [list(tickers), start]).pl()
+
+    @_timed
     def read_missing(self) -> tuple[str, ...]:
         """Return the active instruments that have no bars, sorted."""
         rows = self.connection.execute(_SELECT_MISSING).fetchall()
         return tuple(row[0] for row in rows)
 
+    @_timed
     def read_runs(self) -> polars.DataFrame:
         """Return every manifest row, its times in UTC whatever the session's zone."""
         return (
@@ -120,6 +188,7 @@ class Store:
             .with_columns(polars.col("ended", "started").dt.convert_time_zone("UTC"))
         )
 
+    @_timed
     def replace_metrics(
         self, metrics: polars.DataFrame, overview: polars.DataFrame
     ) -> None:
@@ -142,8 +211,12 @@ class Store:
             self.connection.execute("rollback")
             raise error.StoreError("The load failed and was rolled back") from failure
 
+    @_timed
     def replace(self, load: port.Load) -> None:
         """Replace the answered instruments' bars and rejected rows, and the tickers.
+
+        Each instrument's rows from its `since` day on are replaced, or all of
+        them where `since` is null.
 
         :param load: What the run keeps.
         :raises StoreError: If the transaction fails; it is rolled back.
@@ -156,13 +229,11 @@ class Store:
             "incoming_rejected", load.rejected.with_columns(stamped).to_arrow()
         )
         self.connection.register("incoming_tickers", load.universe.to_arrow())
-        answered = list(load.answered)
+        self.connection.register("incoming_since", load.since.to_arrow())
         self.connection.execute("begin transaction")
         try:
             for table in ("bars", "rejected"):
-                self.connection.execute(
-                    f"delete from {table} where list_contains(?, ticker)", [answered]
-                )
+                self.connection.execute(_DELETE_SINCE.format(table=table))
             self.connection.execute(_INSERT_BARS)
             self.connection.execute(_INSERT_REJECTED)
             self.connection.execute("delete from tickers")

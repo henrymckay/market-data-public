@@ -3,8 +3,11 @@
 import re
 
 import polars
+import polars.selectors
 
 _SPARK_BARS = 63
+_SPARK_DIGITS = 5
+_METRIC_DIGITS = 7
 _PUNCTUATION = re.compile(r"[\^=.]")
 
 _WINDOWS = ("1d", "1w", "1m", "3m", "ytd", "1y", "3y", "5y")
@@ -36,6 +39,8 @@ def build_overview(
 
     An instrument with no bars stays, with null figures and a bar count of 0, so
     a dead symbol shows in the coverage.
+    Figures are rounded to seven significant digits and the sparkline to five,
+    which keeps the API's overview body small for a page that shows fewer.
 
     :param bars: Stored bars, with `adj_close`, `day` and `ticker`.
     :param metrics: Long metrics: `metric`, `ticker`, `value`.
@@ -67,6 +72,12 @@ def build_overview(
             bar_count=polars.col("bar_count").fill_null(0),
             rejected=polars.col("rejected").fill_null(0),
             slug=polars.col("ticker").map_elements(slug, return_dtype=polars.String),
+        )
+        .with_columns(
+            polars.selectors.float().round_sig_figs(_METRIC_DIGITS),
+            polars.col("spark").list.eval(
+                polars.element().round_sig_figs(_SPARK_DIGITS)
+            ),
         )
         .sort("ticker")
     )
