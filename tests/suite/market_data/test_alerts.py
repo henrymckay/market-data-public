@@ -257,8 +257,8 @@ def test_when_a_class_has_a_grade_b_signal_then_it_gets_a_digest_with_its_lines(
     [digest] = [message for message in messages if message.kind == "digest"]
     assert digest.title == "Stocks: 2 signals on 17 Nov 2026, 1 graded A"
     assert digest.message.splitlines() == [
-        "A NVDA W first higher high 142.10, base 66%",
-        "B AMD D first lower high 151.20, base 58%",
+        "A NVDA W first higher high 142.10, base 66% vs 61%",
+        "B AMD D first lower high 151.20, base 58% vs 61%",
     ]
     assert digest.priority == 3
     assert [action.label for action in digest.actions] == ["NVDA", "AMD"]
@@ -296,7 +296,7 @@ def test_when_a_digest_has_too_many_lines_then_the_last_ones_fold_into_a_count(
     lines = digest.message.splitlines()
     assert len(lines) <= 12
     assert len(digest.message.encode()) <= 1500
-    assert lines[-1] == "+19 more, 1 graded C on the Signals screen"
+    assert lines[-1] == "+19 more, +1 graded C on the Signals screen"
     assert len(digest.signals) == 30
     assert len(digest.title) <= 60
 
@@ -313,7 +313,7 @@ def test_when_nothing_is_folded_then_the_last_line_counts_grade_c_only(packaged)
 
     [digest] = _plan(packaged, *rows, tickers=tickers)
 
-    assert digest.message.splitlines()[-1] == "2 graded C on the Signals screen"
+    assert digest.message.splitlines()[-1] == "+2 graded C on the Signals screen"
     assert digest.signals == ("NVDA|w|break_up|2026-11-09",)
 
 

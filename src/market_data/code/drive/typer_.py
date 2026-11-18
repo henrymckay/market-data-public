@@ -31,11 +31,13 @@ _LOGGER = logging.getLogger(__name__)
 app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
 )
 universe_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     help="Keep the universe of instruments current.",
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
 )
 app.add_typer(universe_app, name="universe")
 

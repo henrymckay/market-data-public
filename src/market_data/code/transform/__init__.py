@@ -8,6 +8,7 @@ from market_data.code.transform.alerts import Message as Message
 from market_data.code.transform.alerts import attach_context as attach_context
 from market_data.code.transform.alerts import build_alert_rows as build_alert_rows
 from market_data.code.transform.alerts import build_health as build_health
+from market_data.code.transform.alerts import chart_is_sound as chart_is_sound
 from market_data.code.transform.alerts import format_price as format_price
 from market_data.code.transform.alerts import health_change as health_change
 from market_data.code.transform.alerts import keep_complete_bars as keep_complete_bars

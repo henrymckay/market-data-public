@@ -39,6 +39,7 @@ HEALTH_PRIORITY = 5
 RECOVERY_PRIORITY = 3
 ACTIONS_PER_DIGEST = 3
 MISSING_SHOWN = 3
+MIN_CHART_BARS = 20
 
 _TIMEFRAME_WORDS = {"d": "daily", "w": "weekly", "m": "monthly"}
 _TIMEFRAME_UNITS = {"d": "day", "w": "week", "m": "month"}
@@ -64,6 +65,7 @@ _CLASS_LABELS = {
 _GRADE_RANK = {"A": 0, "B": 1, "C": 2}
 _VERDICT_RANK = {"failed": 0, "partial": 1, "stale": 2}
 _LOWER_GRADE = "C"
+_NO_EDGE = 0.02
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
@@ -365,10 +367,12 @@ def _base_line(row: Row) -> str:
     moved = "rose" if row["direction"] == "up" else "fell"
     unit = _TIMEFRAME_UNITS[row["timeframe"]]
     scope = ", all classes" if row["base_scope"] == "all" else ""
+    flat = abs(row["base_hit"] - row["base_baseline"]) < _NO_EDGE
+    verdict = ", no edge" if flat else ""
     return (
         f"Base rate: {_percent(row['base_hit'])} {moved} within "
         f"{row['base_horizon']} {unit}s (n {row['base_n']}{scope}); "
-        f"any {unit} {_percent(row['base_baseline'])}."
+        f"any {unit} {_percent(row['base_baseline'])}{verdict}."
     )
 
 
@@ -433,7 +437,9 @@ def compose_push(row: Row, *, rules: rules_.Rules) -> Message:
 def _digest_line(row: Row) -> str:
     """Return one signal's line in a digest."""
     base = (
-        f"base {_percent(row['base_hit'])}" if row["base_n"] is not None else "no base"
+        f"base {_percent(row['base_hit'])} vs {_percent(row['base_baseline'])}"
+        if row["base_n"] is not None
+        else "no base"
     )
     level = format_price(row["level"], row["asset_class"])
     return (
@@ -446,7 +452,7 @@ def _digest_tail(*, folded: int, lower: int) -> str | None:
     """Return the last line, counting what the digest leaves to the Signals screen."""
     parts = [
         *([f"+{folded} more"] if folded else []),
-        *([f"{lower} graded {_LOWER_GRADE}"] if lower else []),
+        *([f"+{lower} graded {_LOWER_GRADE}"] if lower else []),
     ]
     return f"{', '.join(parts)} on the Signals screen" if parts else None
 
@@ -594,7 +600,10 @@ def build_health(
             ),
             state="healthy",
         )
-    verdicts = [row["outcome"] for row in unstored] + (["stale"] if stale else [])
+    verdicts = [
+        *(row["outcome"] for row in unstored),
+        *(["stale"] if stale else []),
+    ]
     verdict = min(verdicts or ["stale"], key=lambda name: _VERDICT_RANK.get(name, 3))
     problems = [
         f"{row['source']} {row['outcome']}"
@@ -676,3 +685,13 @@ def keep_complete_bars(
         polars.col("low").is_finite(),
     )
     return priced.filter(end.lt(today)) if timeframe != "d" else priced
+
+
+def chart_is_sound(bars: polars.DataFrame) -> bool:
+    """Return whether the bars can show a chart: enough of them, most with a range.
+
+    Some instruments, futures above all, carry many flat or empty bars; a chart
+    of them shows candles that are not there, so the push goes as text.
+    """
+    ranged = bars.filter(polars.col("high").gt(polars.col("low"))).height
+    return bars.height >= MIN_CHART_BARS and ranged * 2 >= bars.height

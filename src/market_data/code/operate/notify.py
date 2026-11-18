@@ -131,6 +131,9 @@ def _draw(
             timeframe=request.timeframe,
             today=today,
         ).tail(_CHART_BARS)
+        if not transform.chart_is_sound(bars):
+            _LOGGER.warning("Too few bars with a range for %s; no chart", message.title)
+            return None
         pivots = store.read_chart_pivots(request.ticker, request.timeframe)
         return render(request, bars, pivots)
     except error.ChartError as failure:
