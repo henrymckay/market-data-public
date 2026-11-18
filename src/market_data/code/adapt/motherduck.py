@@ -48,12 +48,6 @@ _SELECT_BARS = """
 select adj_close, close, day, high, low, ticker, volume from bars
 """
 
-_SELECT_SITE_BARS = """
-select
-    adj_close, close, day, dividend, high, low, open, split, ticker, volume
-from bars
-"""
-
 _SELECT_MISSING = """
 select ticker
 from tickers
@@ -106,10 +100,6 @@ class Store:
         return self.connection.execute(
             "select ticker, count(*)::bigint as rejected from rejected group by ticker"
         ).pl()
-
-    def read_site_bars(self) -> polars.DataFrame:
-        """Return every stored bar as the site's bars files hold it."""
-        return self.connection.execute(_SELECT_SITE_BARS).pl()
 
     def read_tickers(self) -> polars.DataFrame:
         """Return the stored universe."""
