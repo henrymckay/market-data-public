@@ -36,9 +36,11 @@ def _check_members(members: polars.DataFrame) -> None:
         raise error.SourceError("The S&P 500 list holds a symbol of an odd shape")
     if not symbols.is_unique().all():
         raise error.SourceError("The S&P 500 list repeats a symbol")
-    if members.select(polars.col("name", "sector").is_null().any()).row(0) != (
-        False,
-        False,
+    if (
+        members.select(polars.col("name", "sector"))
+        .null_count()
+        .sum_horizontal()
+        .item()
     ):
         raise error.SourceError("The S&P 500 list lacks a name or a sector")
 
