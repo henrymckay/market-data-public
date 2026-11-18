@@ -41,6 +41,14 @@ def test_when_a_ticker_opens_then_candles_and_figures_draw_without_error(page, s
     assert page.errors == []
 
 
+def test_when_a_hyphenated_ticker_opens_then_its_bars_load(page, served):
+    _open(page, served, "?view=ticker&t=BTC-USD")
+
+    assert page.get_by_text("Last close").is_visible()
+    assert "/api/bars/btc-usd" in served[1].requests
+    assert page.errors == []
+
+
 def test_when_an_instrument_is_picked_in_search_then_its_screen_opens(page, served):
     _open(page, served)
 

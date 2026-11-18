@@ -1,6 +1,6 @@
 # market-data-public
 
-A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance`, stores them in MotherDuck, and publishes a static dashboard built from that store; a throwaway end-to-end test.
+A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance`, stores them in MotherDuck, and shows them on a dashboard that reads the store live through a small API; a throwaway end-to-end test.
 
 **Live dashboard: <https://henrymckay.github.io/market-data-public/>**
 
@@ -28,14 +28,10 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `compute`, on one connection.
 - `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old.
 - `fetch`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
-- `export --output web/public/data` writes the dashboard's data (`overview.parquet`, `bars/<slug>.parquet`, `runs.parquet`, `latest.json`) and prints a `path,rows,bytes` row per file.
 - Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
-`.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand, in three jobs:
-
-- `nightly` runs `nightly`, then `status`, then `export`, and hands the site data to the next job as an artifact; it is the only job that holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
-- `site` builds `web/` over that artifact.
-- `deploy` publishes it to GitHub Pages.
+`.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand, in one job: `nightly`, then `status`; it holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
+`.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, once the repository variable `API_URL` names the API.
 
 Run it by hand with `gh workflow run nightly.yml --ref main`.
 
@@ -45,20 +41,23 @@ Every night replaces each answering instrument's whole history, so a re-run is s
 
 A Vite, React and TypeScript app in `web/`; Node comes from `nodejs-wheel` through `uv`, so none is needed on the system.
 
+The page fetches JSON from the API named by `VITE_API_URL` when it is built, so run the API first (below), then:
+
 ```bash
 uv sync
-MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli export --output web/public/data
 uv run npm --prefix web ci
-uv run npm --prefix web run build
+VITE_API_URL=http://127.0.0.1:8787 uv run npm --prefix web run build
 uv run npm --prefix web run preview    # http://127.0.0.1:4173/
 ```
 
+The API only answers pages from the origin in its `ALLOWED_ORIGIN`; for the preview, start it with `-- --var ALLOWED_ORIGIN:http://127.0.0.1:4173` after `npm run dev`.
+A slow API shows a "still loading" note and a failed one an error with a retry; the rest of the page keeps working.
+
 Four screens: Markets, Ticker, Compare and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
-`web/public/data/` is generated and git-ignored.
 
 ## API
 
-`api/` is a Cloudflare Worker that answers the dashboard's four reads (`/api/latest`, `/api/overview`, `/api/runs`, `/api/bars/{slug}`) from MotherDuck through a cache, with a docs page at `/`; it is built and tested but not deployed yet.
+`api/` is a Cloudflare Worker that answers the dashboard's four reads (`/api/latest`, `/api/overview`, `/api/runs`, `/api/bars/{slug}`) from MotherDuck through a cache, with a docs page at `/`; it is built and tested but not deployed yet, and the dashboard on `main` still reads the files the old export published until the front end on the API is merged and deployed.
 Run it locally against the store, the token going from the keychain into that one process and nowhere else:
 
 ```bash
@@ -77,7 +76,8 @@ uv run pyright
 uv run pytest -m real   # one run against Yahoo itself
 uv run npm --prefix web run typecheck && uv run npm --prefix web run lint && uv run npm --prefix web test
 uv run npm --prefix api run typecheck && uv run npm --prefix api run lint && uv run npm --prefix api test
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" uv run pytest -m slow   # browser smokes over web/dist; build first
+VITE_API_URL=http://127.0.0.1:8788 uv run npm --prefix web run build   # the smokes' stub API listens on 8788
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" uv run pytest -m slow   # browser smokes over web/dist
 ```
 
 ## Query the store
