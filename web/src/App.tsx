@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useSt
 
 import { Header } from "./components/Header";
 import { SearchDialog } from "./components/SearchDialog";
-import { Block } from "./components/Status";
+import { Block, SlowNote } from "./components/Status";
 import { judge } from "./lib/freshness";
 import { useReady } from "./lib/ready";
 import { MAX_COMPARE, useRoute, VIEW_LABELS } from "./lib/route";
@@ -69,6 +69,7 @@ export default function App() {
     <>
       <Header view={route.view} onView={(view) => update({ view })} onSearch={() => setSearching(true)} freshness={freshness} lastDay={lastDay} now={now} />
       <main className="mx-auto max-w-[1280px] px-3 py-3 sm:px-4 sm:py-4">
+        {data.overview.status === "loading" && <SlowNote />}
         <Suspense fallback={<Holding />}>
           {route.view === "markets" && <Markets data={data} route={route} update={update} />}
           {route.view === "ticker" && <Ticker data={data} route={route} update={update} onSearch={() => setSearching(true)} />}

@@ -46,7 +46,7 @@ export default function Runs({ data }: { data: Data; now: number }) {
   return (
     <div className="space-y-3 sm:space-y-4" data-screen="runs">
       {data.runs.status === "error" ? (
-        <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the run history. Other screens still work; tonight&rsquo;s run rewrites the file.</ErrorNote>
+        <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the run history: the API didn&rsquo;t answer. Other screens still work.</ErrorNote>
       ) : runs === null ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((n) => <TileSkeleton key={n} />)}</div>
       ) : last === null || verdict === null ? (
@@ -95,7 +95,7 @@ export default function Runs({ data }: { data: Data; now: number }) {
 
       <Card title="Coverage by instrument" subtitle="Problems first; a gap or a dead symbol shows here">
         {coverage === null ? (
-          data.overview.status === "error" ? <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list. Other screens still work; tonight&rsquo;s run rewrites the file.</ErrorNote> : <Block height={320} />
+          data.overview.status === "error" ? <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list: the API didn&rsquo;t answer. Other screens still work.</ErrorNote> : <Block height={320} />
         ) : (
           <div className="scroll-thin max-h-[470px] overflow-auto rounded-md border">
             <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
