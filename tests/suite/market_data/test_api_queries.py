@@ -309,7 +309,8 @@ def test_when_bars_then_pivots_and_signals_are_the_instruments_own(signalled):
     }  # fmt: skip
     assert {row["event"] for row in body["signals"]} >= {"break_up", "confirm_up"}
     assert set(body["signals"][0]) == {
-        "id", "timeframe", "event", "day", "known", "level", "stop", "grade", "score",
+        "id", "timeframe", "event", "direction", "day", "known", "level", "stop",
+        "grade", "score", "return_to_date", "held_to_date",
     }  # fmt: skip
     assert all(row["id"].startswith("AAA|") for row in body["signals"])
 

@@ -13,6 +13,7 @@ import { Markets } from "./views/Markets";
 const Ticker = lazy(() => import("./views/Ticker"));
 const Compare = lazy(() => import("./views/Compare"));
 const Runs = lazy(() => import("./views/Runs"));
+const Signals = lazy(() => import("./views/Signals"));
 
 function Holding() {
   useReady(false);
@@ -75,7 +76,8 @@ export default function App() {
           {route.view === "markets" && <Markets data={data} route={route} update={update} />}
           {route.view === "ticker" && <Ticker data={data} route={route} update={update} onSearch={() => setSearching(true)} />}
           {route.view === "compare" && <Compare data={data} route={route} update={update} onSearch={() => setSearching(true)} />}
-          {route.view === "runs" && <Runs data={data} now={now} />}
+          {route.view === "signals" && <Signals data={data} route={route} update={update} />}
+          {route.view === "runs" &&<Runs data={data} now={now} />}
         </Suspense>
       </main>
       <SearchDialog

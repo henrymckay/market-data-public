@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadLatest, loadOverview, loadRuns } from "./data";
+import { loadLatest, loadOverview, loadRuns, loadSignals, loadStats } from "./data";
+import type { Signal, Stat } from "./signals";
 import type { Instrument, Latest, Run } from "./types";
 
 export type Loaded<T> = { status: "loading" } | { status: "error" } | { status: "ready"; value: T };
@@ -15,6 +16,9 @@ export interface Data {
 }
 
 const POLL_MS = 300_000;
+
+/** What the API's cache is keyed on: the metrics or signals run's end, else the yahoo run's. */
+const stampOf = (latest: Latest | null): string | null => latest?.version ?? latest?.ended ?? null;
 
 /** The API's data, refetched when the latest run's `ended` changes. */
 export const useData = (): Data => {
@@ -45,7 +49,7 @@ export const useData = (): Data => {
     load();
     loadLatest().then(
       (value) => {
-        known.current = value?.ended ?? null;
+        known.current = stampOf(value);
         setLatest(value);
       },
       () => undefined,
@@ -54,7 +58,7 @@ export const useData = (): Data => {
       loadLatest().then(
         (value) => {
           setLatest(value);
-          const ended = value?.ended ?? null;
+          const ended = stampOf(value);
           if (known.current !== undefined && ended !== known.current && ended !== null) {
             setVersion(ended);
             load(ended);
@@ -68,6 +72,26 @@ export const useData = (): Data => {
   }, [load]);
 
   return { latest, overview, reload, runs, version };
+};
+
+export type Signalled = { status: "loading" } | { status: "error" } | { status: "ready"; signals: Signal[]; stats: Stat[] };
+
+/** The signals and base rates for a data version; both are fetched once and shared by every screen. */
+export const useSignals = (version: string | undefined, attempt = 0, wanted = true): Signalled => {
+  const [loaded, setLoaded] = useState<{ key: string; value: Signalled } | null>(null);
+  const key = `${version ?? ""}|${attempt}`;
+  useEffect(() => {
+    if (!wanted) return undefined;
+    let current = true;
+    Promise.all([loadSignals(version), loadStats(version)]).then(
+      ([signals, stats]) => current && setLoaded({ key, value: { signals, stats, status: "ready" } }),
+      () => current && setLoaded({ key, value: { status: "error" } }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [version, key, wanted]);
+  return loaded !== null && loaded.key === key ? loaded.value : { status: "loading" };
 };
 
 /** The current time, refreshed on a slow clock so an age judged from it stays honest. */
