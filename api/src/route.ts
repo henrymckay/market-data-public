@@ -1,6 +1,6 @@
 /** The pure core: a request in, a decision out. No I/O lives here. */
 
-export type Endpoint = "latest" | "overview" | "runs";
+export type Endpoint = "latest" | "overview" | "runs" | "signals" | "stats";
 
 export type Route =
   | { kind: "data"; endpoint: Endpoint }
@@ -21,6 +21,8 @@ const DATA_PATHS: Record<string, Endpoint> = {
   "/api/latest": "latest",
   "/api/overview": "overview",
   "/api/runs": "runs",
+  "/api/signals": "signals",
+  "/api/stats": "stats",
 };
 
 const BARS_PREFIX = "/api/bars/";

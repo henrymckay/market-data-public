@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CalendarGrid } from "../components/CalendarGrid";
 import { CandleChart } from "../components/CandleChart";
+import { EventLabel, GradeChip, HeldMark } from "../components/SignalParts";
 import { Card } from "../components/Card";
 import { Chart, frame, tooltipRow, type Option } from "../components/Chart";
 import { Delta } from "../components/Delta";
@@ -13,18 +14,20 @@ import {
   formatBasisPoints,
   minus,
   formatDay,
+  formatInteger,
   formatPercent,
   formatPrice,
   formatShare,
   formatYield,
 } from "../lib/format";
-import { loadBars } from "../lib/data";
+import { loadBars, type Bars } from "../lib/data";
 import { useReady } from "../lib/ready";
+import { BAR_WORDS, EVENT_WORDS, TIMEFRAMES, TIMEFRAME_WORDS, baseRateFor, selectSignal, share, sigOf, signalSentence, signedSince, type Mark, type Timeframe } from "../lib/signals";
 import type { Route } from "../lib/route";
 import { drawdowns, maxDrawdown, monthlyReturns, RANGES, rangeStart, startIndex, totalReturn, type Series } from "../lib/stats";
 import { useTokens, type Tokens } from "../lib/theme";
 import type { Instrument } from "../lib/types";
-import type { Data } from "../lib/useData";
+import { useSignals, type Data } from "../lib/useData";
 
 interface Props {
   data: Data;
@@ -33,7 +36,7 @@ interface Props {
   onSearch: () => void;
 }
 
-type Bars = { key: string; result: "error" | Series };
+type Loaded = { key: string; result: "error" | Bars };
 
 const CLASS_NAME: Record<string, string> = {
   commodity: "Commodity future", crypto: "Cryptocurrency", etf: "Exchange-traded fund", fx: "Currency", index: "Index", rate: "Interest rate", stock: "Stock",
@@ -61,12 +64,54 @@ const drawdownOption = (series: Series, from: number, t: Tokens): Option => {
   };
 };
 
+const baseRateText = (stats: Parameters<typeof baseRateFor>[0], mark: Mark, assetClass: string): string => {
+  const rate = baseRateFor(stats, { assetClass, event: mark.event, timeframe: mark.timeframe });
+  if (rate === null) return "";
+  return `Base rate: ${share(rate.hitRate)} moved this way within ${rate.horizon} ${BAR_WORDS[mark.timeframe]}s (${formatInteger(rate.n)} ${rate.n === 1 ? "signal" : "signals"}); any bar ${share(rate.baselineHit)}.`;
+};
+
+function BaseRate({ text }: { text: string }) {
+  return text === "" ? null : <> {text}</>;
+}
+
+function SignalList({ marks, assetClass, selected, open }: { marks: Mark[]; assetClass: string; selected: Mark | null; open: (mark: Mark) => void }) {
+  return (
+    <div className="scroll-thin max-h-[320px] overflow-auto rounded-md border">
+      <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
+        <thead>
+          <tr>
+            {["Known", "Event", "Grade", "Level", "Stop", "Since", "Held"].map((label, index) => (
+              <th key={label} scope="col" className={`sticky top-0 z-10 h-9 whitespace-nowrap bg-muted px-3 font-medium text-muted-foreground ${index === 3 || index === 4 || index === 5 ? "text-right" : "text-left"}`}>{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {marks.map((mark) => {
+            const since = signedSince(mark);
+            return (
+              <tr key={mark.id} onClick={() => open(mark)} aria-selected={selected?.id === mark.id} className={`cursor-pointer hover:bg-muted ${selected?.id === mark.id ? "bg-muted" : ""}`}>
+                <td className="h-9 whitespace-nowrap border-t px-3 num">{formatDay(mark.known)}</td>
+                <td className="h-9 border-t px-3"><EventLabel event={mark.event} direction={mark.direction} /></td>
+                <td className="h-9 border-t px-3"><GradeChip grade={mark.grade} /></td>
+                <td className="h-9 border-t px-3 text-right num">{formatPrice(mark.level, assetClass)}</td>
+                <td className="h-9 border-t px-3 text-right num">{formatPrice(mark.stop, assetClass)}</td>
+                <td className="h-9 border-t px-3 text-right"><Delta value={since} text={since === null ? null : formatPercent(since)} /></td>
+                <td className="h-9 border-t px-3"><HeldMark held={mark.held} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function Ticker({ data, route, update, onSearch }: Props) {
   const t = useTokens();
   const instrument: Instrument | undefined = data.overview.status === "ready" ? data.overview.value.find((i) => i.ticker === route.ticker) : undefined;
   const slug = instrument?.slug;
   const hasBars = instrument !== undefined && instrument.barCount > 0;
-  const [loaded, setLoaded] = useState<Bars | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [attempt, setAttempt] = useState(0);
   const key = `${slug}|${data.version}|${attempt}`;
 
@@ -90,6 +135,14 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
   const ready = data.overview.status === "error" || missing || (instrument !== undefined && (!hasBars || current !== null));
   useReady(ready);
 
+  const tf: Timeframe = route.tf === "w" || route.tf === "m" ? route.tf : "d";
+  const frame: Series | null = series === null ? null : tf === "d" ? series : tf === "w" ? series.weekly : series.monthly;
+  const marks = useMemo(() => (series === null ? [] : series.marks.filter((mark) => mark.timeframe === tf)), [series, tf]);
+  const structure = useMemo(
+    () => ({ marks, pivots: series === null ? [] : series.pivots.filter((pivot) => pivot.timeframe === tf), selected: selectSignal(marks, tf, route.sig === "" ? null : route.sig), timeframe: tf }),
+    [series, marks, tf, route.sig],
+  );
+  const signalled = useSignals(data.version, 0, structure.selected !== null);
   const last = series?.days[series.days.length - 1] ?? null;
   const from = series === null || last === null ? 0 : startIndex(series.days, rangeStart(route.range, last));
   const isYield = instrument?.quoteType === "yield";
@@ -137,6 +190,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Segmented label="Timeframe" options={TIMEFRAMES} value={tf} onChange={(next) => update({ sig: "", tf: next })} format={(frameName) => frameName.toUpperCase()} />
           <Segmented label="Range" options={RANGES} value={route.range} onChange={(range) => update({ range })} />
           <Toggle label="MA 50" checked={route.ma50} onChange={(ma50) => update({ ma50 })} />
           <Toggle label="MA 200" checked={route.ma200} onChange={(ma200) => update({ ma200 })} />
@@ -152,17 +206,36 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
         <Tile label={`Max drawdown, ${route.range}`} value={<Delta value={figures?.drawdown ?? null} text={figures === null ? null : formatPercent(figures.drawdown)} />} context="Peak to trough, adjusted" />
       </div>
 
-      <Card title={`${instrument?.name ?? route.ticker}, daily candles`} subtitle={`Split-adjusted prices in ${UNIT[instrument?.assetClass ?? ""] ?? "quoted units"}, volume below; markers show dividends and splits`}>
+      {structure.selected !== null && instrument !== undefined && (
+        <p role="status" className="m-0 rounded-md border bg-card px-3 py-2 text-sm" data-testid="signal-note">
+          <span className="font-medium">{instrument.ticker}.</span> {signalSentence(structure.selected, instrument.assetClass)}
+          {signalled.status === "ready" && <BaseRate text={baseRateText(signalled.stats, structure.selected, instrument.assetClass)} />}
+        </p>
+      )}
+
+      <Card title={`${instrument?.name ?? route.ticker}, ${TIMEFRAME_WORDS[tf].toLowerCase()} candles`} subtitle={`Split-adjusted prices in ${UNIT[instrument?.assetClass ?? ""] ?? "quoted units"}, volume below; arrows are signals, grey labels are swings, small markers are dividends and splits`}>
         {instrument !== undefined && !hasBars ? (
           <EmptyNote>No bars stored for {instrument.ticker} yet.</EmptyNote>
         ) : barsFailed ? (
           <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>Couldn&rsquo;t load {route.ticker}&rsquo;s prices: the API didn&rsquo;t answer. Other screens still work.</ErrorNote>
-        ) : series === null || instrument === undefined ? (
+        ) : frame === null || instrument === undefined ? (
           <Block height={520} />
+        ) : frame.days.length === 0 ? (
+          <EmptyNote>No {TIMEFRAME_WORDS[tf].toLowerCase()} bars stored for {instrument.ticker} yet.</EmptyNote>
         ) : (
-          <CandleChart series={series} assetClass={instrument.assetClass} tokens={t} range={route.range} ma50={route.ma50} ma200={route.ma200} log={route.log} height={520} label={`Candlestick chart of ${instrument.name}, ${route.range}`} />
+          <CandleChart series={frame} structure={structure} assetClass={instrument.assetClass} tokens={t} range={route.range} ma50={route.ma50} ma200={route.ma200} log={route.log} height={520} label={`Candlestick chart of ${instrument.name}, ${TIMEFRAME_WORDS[tf].toLowerCase()}, ${route.range}${structure.selected === null ? "" : `; selected signal: ${EVENT_WORDS[structure.selected.event].toLowerCase()}, level ${formatPrice(structure.selected.level, instrument.assetClass)}, invalid at ${formatPrice(structure.selected.stop, instrument.assetClass)}`}`} />
         )}
       </Card>
+
+      {hasBars && !barsFailed && instrument !== undefined && series !== null && (
+        <Card title={`Signals, ${TIMEFRAME_WORDS[tf].toLowerCase()}`} subtitle="Newest first; Since is the price move since the signal bar, positive when it went the signal’s way">
+          {marks.length === 0 ? (
+            <EmptyNote>No {TIMEFRAME_WORDS[tf].toLowerCase()} signals for {instrument.ticker} yet.</EmptyNote>
+          ) : (
+            <SignalList marks={[...marks].reverse()} assetClass={instrument.assetClass} selected={structure.selected} open={(mark) => update({ sig: sigOf(mark) })} />
+          )}
+        </Card>
+      )}
 
       {hasBars && !barsFailed && (
         <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">

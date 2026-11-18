@@ -17,6 +17,8 @@ export interface Instrument {
   lastDay: string | null;
   rejected: number;
   spark: number[] | null;
+  /** The structure's state per timeframe; null where the instrument has none. */
+  trend: { d: TrendState | null; w: TrendState | null; m: TrendState | null };
 }
 
 export interface Run {
@@ -36,4 +38,19 @@ export interface Latest {
   ended: string;
   outcome: string;
   rows: number;
+  /** The end of the last stored metrics or signals run, which the API's cache is keyed on. */
+  version?: string | null;
 }
+
+/** A swing of one timeframe and how it stands against the one before. */
+export interface Pivot {
+  timeframe: "d" | "w" | "m";
+  kind: "high" | "low";
+  label: string | null;
+  day: string;
+  price: number;
+}
+
+/** The structure's state of a market on one timeframe. */
+export const TREND_STATES = ["up", "turning_up", "down", "turning_down", "none"] as const;
+export type TrendState = (typeof TREND_STATES)[number];

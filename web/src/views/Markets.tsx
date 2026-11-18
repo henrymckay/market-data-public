@@ -8,6 +8,7 @@ import { Segmented } from "../components/Segmented";
 import { Spark } from "../components/Spark";
 import { Block, EmptyNote, ErrorNote } from "../components/Status";
 import { Tile, TileSkeleton } from "../components/Tile";
+import { TrendChips } from "../components/TrendChips";
 import { cn } from "../lib/cn";
 import { figure, returnOf } from "../lib/figures";
 import {
@@ -183,7 +184,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
   return (
     <>
     <div className="scroll-thin max-h-[614px] overflow-auto rounded-md border">
-      <table className="w-full min-w-[780px] sm:min-w-[860px] border-separate border-spacing-0 text-sm">
+      <table className="w-full min-w-[880px] sm:min-w-[960px] border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
             {head("ticker", "Ticker", "left", "sticky left-0 z-20")}
@@ -192,6 +193,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
             {WINDOWS.map((w) => head(w, PERIOD_LABEL[w], "right"))}
             <th scope="col" className="sticky top-0 z-10 h-9 bg-muted px-3 text-left font-medium text-muted-foreground">52-week range</th>
             <th scope="col" className="sticky top-0 z-10 h-9 bg-muted px-3 text-left font-medium text-muted-foreground">3 months</th>
+            <th scope="col" className="sticky top-0 z-10 h-9 bg-muted px-3 text-left font-medium text-muted-foreground">Trend</th>
           </tr>
         </thead>
         <tbody>
@@ -214,6 +216,7 @@ function InstrumentTable({ items, route, update, open }: { items: Instrument[]; 
               })}
               <td className="h-9 border-t px-3"><RangeBar item={item} /></td>
               <td className="h-9 border-t px-3">{item.spark === null ? <span className="text-muted-foreground">–</span> : <Spark values={item.spark} label={`${item.ticker}, last 63 closes`} width={72} height={22} />}</td>
+              <td className="h-9 border-t px-3"><TrendChips item={item} /></td>
             </tr>
           ))}
         </tbody>

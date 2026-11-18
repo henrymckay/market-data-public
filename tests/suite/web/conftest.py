@@ -10,8 +10,8 @@ import playwright.sync_api
 import polars
 import pytest
 
-from market_data.code import port, transform
-from market_data.code.adapt import motherduck
+from market_data.code import operate, port, transform
+from market_data.code.adapt import motherduck, rules
 from pytest_ import fake, stub_api
 
 _WEB = pathlib.Path(__file__).parents[3] / "web"
@@ -63,6 +63,12 @@ def database(tmp_path_factory: pytest.TempPathFactory, real_universe_session) ->
             rejected=polars.DataFrame(schema=port.REJECTED),
             universe=real_universe_session,
         )
+    )
+    operate.compute_signals(
+        bars=bars,
+        now=lambda: started + datetime.timedelta(minutes=3),
+        rules=rules.read_rules(),
+        store=store,
     )
     metrics = transform.build_metrics(bars)
     store.replace_metrics(
