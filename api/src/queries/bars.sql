@@ -65,12 +65,15 @@ select
                             id: id,
                             timeframe: timeframe,
                             event: event,
+                            direction: direction,
                             day: day,
                             known: known,
                             level: level,
                             stop: stop,
                             grade: grade,
-                            score: score
+                            score: score,
+                            return_to_date: return_to_date,
+                            held_to_date: held_to_date
                         }
                         order by day, id
                     )

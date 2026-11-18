@@ -76,6 +76,13 @@ export const formatAge = (milliseconds: number): string => {
   return `${Math.round(hours / 24)} d ago`;
 };
 
+/** A difference of two fractions as signed percentage points: 0.012 gives +1.2 pp. */
+export const formatPoints = (fraction: number): string => {
+  const text = formatFixed(fraction * 100, 1);
+  if (text === "0.0" || text === `${MINUS}0.0`) return "0.0 pp";
+  return `${fraction < 0 ? "" : "+"}${text} pp`;
+};
+
 /** A short duration as `1 min 59 s` between two ISO moments. */
 export const formatDuration = (startIso: string, endIso: string): string => {
   const seconds = Math.max(0, Math.round((Date.parse(endIso) - Date.parse(startIso)) / 1000));

@@ -19,7 +19,7 @@ const ENDPOINTS = [
   {
     path: "/api/bars/{slug}",
     summary: "One instrument's whole history, oldest first, as columns. The slug is the ticker lower-cased without ^, = and . (gspc, eurusdx).",
-    response: `{"ticker": "^GSPC", "day": ["1927-12-30", "…"], "open": [17.66], "high": [17.66], "low": [17.66], "close": [17.66], "adj_close": [17.66], "volume": [0], "dividend": [0], "split": [0], "weekly": {"day": ["1927-12-26", "…"], "open": [17.66], "high": [17.66], "low": [17.66], "close": [17.66], "adj_close": [17.66], "volume": [0]}, "monthly": {"day": ["1927-12-01", "…"], "…": "…"}, "pivots": [{"timeframe": "d", "kind": "high", "label": "HH", "day": "2026-09-02", "price": 6712.4, "confirmed": "2026-09-09"}], "signals": [{"id": "^GSPC|d|break_up|2026-11-10", "timeframe": "d", "event": "break_up", "day": "2026-11-10", "known": "2026-11-10", "level": 6650.2, "stop": 6401.9, "grade": "B", "score": 2}]}`,
+    response: `{"ticker": "^GSPC", "day": ["1927-12-30", "…"], "open": [17.66], "high": [17.66], "low": [17.66], "close": [17.66], "adj_close": [17.66], "volume": [0], "dividend": [0], "split": [0], "weekly": {"day": ["1927-12-26", "…"], "open": [17.66], "high": [17.66], "low": [17.66], "close": [17.66], "adj_close": [17.66], "volume": [0]}, "monthly": {"day": ["1927-12-01", "…"], "…": "…"}, "pivots": [{"timeframe": "d", "kind": "high", "label": "HH", "day": "2026-09-02", "price": 6712.4, "confirmed": "2026-09-09"}], "signals": [{"id": "^GSPC|d|break_up|2026-11-10", "timeframe": "d", "event": "break_up", "direction": "up", "day": "2026-11-10", "known": "2026-11-10", "level": 6650.2, "stop": 6401.9, "grade": "B", "score": 2, "return_to_date": 0.012, "held_to_date": true}]}`,
   },
   {
     path: "/api/signals",
