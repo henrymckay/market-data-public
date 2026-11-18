@@ -149,3 +149,13 @@ def test_when_diff_universe_then_added_and_removed_tickers_are_named(universe, m
     assert "S001" in changes.added
     assert "BACK" in changes.added
     assert changes.removed == ("GONE",)
+
+
+@pytest.mark.parametrize("text", ["x" * 101, "two\nlines", "bell\x07"])
+def test_when_a_name_is_odd_then_sync_members_fails(universe, text):
+    members = _members(symbols=[f"X{n:03d}" for n in range(500)]).with_columns(
+        polars.lit(text).alias("name")
+    )
+
+    with pytest.raises(error.SourceError):
+        transform.sync_members(universe, members)
