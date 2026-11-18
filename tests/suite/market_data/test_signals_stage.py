@@ -37,7 +37,7 @@ def test_when_the_stage_runs_then_the_tables_are_replaced_and_the_run_counts_sig
     assert (run.source, run.requests, run.failed_items) == ("signals", 0, 0)
     assert run.rows == computed.signals.height == 1
     assert ledger.runs == [run]
-    assert run.day == run.last_day == datetime.date(2029, 12, 31)
+    assert run.day == run.last_day == bars.get_column("day").max()
 
 
 def test_when_the_store_has_no_bars_then_nothing_is_replaced_and_the_run_failed(

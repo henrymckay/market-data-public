@@ -42,13 +42,6 @@ insert into runs (
 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
-_INSERT_METRICS = """
-insert into metrics (day, metric, ticker, value)
-select day, metric, ticker, value from incoming_metrics
-"""
-
-_INSERT_OVERVIEW = "insert into overview by name select * from incoming_overview"
-
 _SELECT_BARS = """
 select adj_close, close, day, high, low, ticker, volume from bars
 """
@@ -57,8 +50,6 @@ _SELECT_PERIOD_BARS = """
 select adj_close, close, day, high, last_day, low, open, ticker, timeframe, volume
 from period_bars
 """
-
-_SIGNAL_TABLES = ("pivots", "signals", "outcomes", "signal_stats", "structure")
 
 _SELECT_MISSING = """
 select ticker
@@ -207,6 +198,30 @@ class Store:
             .with_columns(polars.col("ended", "started").dt.convert_time_zone("UTC"))
         )
 
+    def _replace_tables(self, tables: dict[str, polars.DataFrame]) -> None:
+        """Replace each table's rows with the frame's, as one transaction.
+
+        The frame's columns name the columns written, so a type the table
+        refuses fails the transaction.
+
+        :raises StoreError: If the transaction fails; it is rolled back.
+        """
+        for name, frame in tables.items():
+            self.connection.register(f"incoming_{name}", frame.to_arrow())
+        self.connection.execute("begin transaction")
+        try:
+            for name, frame in tables.items():
+                columns = ", ".join(frame.columns)
+                self.connection.execute(f"delete from {name}")
+                self.connection.execute(
+                    f"insert into {name} ({columns}) "
+                    f"select {columns} from incoming_{name}"
+                )
+            self.connection.execute("commit")
+        except duckdb.Error as failure:
+            self.connection.execute("rollback")
+            raise error.StoreError("The load failed and was rolled back") from failure
+
     @_timed
     def replace_metrics(
         self, metrics: polars.DataFrame, overview: polars.DataFrame
@@ -217,18 +232,7 @@ class Store:
         :param overview: The new rows, one per instrument.
         :raises StoreError: If the transaction fails; it is rolled back.
         """
-        self.connection.register("incoming_metrics", metrics.to_arrow())
-        self.connection.register("incoming_overview", overview.to_arrow())
-        self.connection.execute("begin transaction")
-        try:
-            self.connection.execute("delete from metrics")
-            self.connection.execute(_INSERT_METRICS)
-            self.connection.execute("delete from overview")
-            self.connection.execute(_INSERT_OVERVIEW)
-            self.connection.execute("commit")
-        except duckdb.Error as failure:
-            self.connection.execute("rollback")
-            raise error.StoreError("The load failed and was rolled back") from failure
+        self._replace_tables({"metrics": metrics, "overview": overview})
 
     @_timed
     def replace_signals(self, computed: transform.Computed) -> None:
@@ -237,35 +241,15 @@ class Store:
         :param computed: The new rows of every table.
         :raises StoreError: If the transaction fails; it is rolled back.
         """
-        tables = {
-            "outcomes": computed.outcomes,
-            "pivots": computed.pivots,
-            "signal_stats": computed.signal_stats,
-            "signals": computed.signals,
-            "structure": computed.structure,
-        }
-        for name, frame in tables.items():
-            self.connection.register(f"incoming_{name}", frame.to_arrow())
-        self.connection.execute("begin transaction")
-        try:
-            for name in _SIGNAL_TABLES:
-                columns = ", ".join(
-                    row[0]
-                    for row in self.connection.execute(
-                        "select column_name from duckdb_columns() "
-                        "where table_name = ? order by column_index",
-                        [name],
-                    ).fetchall()
-                )
-                self.connection.execute(f"delete from {name}")
-                self.connection.execute(
-                    f"insert into {name} ({columns}) "
-                    f"select {columns} from incoming_{name}"
-                )
-            self.connection.execute("commit")
-        except duckdb.Error as failure:
-            self.connection.execute("rollback")
-            raise error.StoreError("The load failed and was rolled back") from failure
+        self._replace_tables(
+            {
+                "outcomes": computed.outcomes,
+                "pivots": computed.pivots,
+                "signal_stats": computed.signal_stats,
+                "signals": computed.signals,
+                "structure": computed.structure,
+            }
+        )
 
     @_timed
     def replace(self, load: port.Load) -> None:

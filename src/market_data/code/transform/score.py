@@ -25,7 +25,7 @@ def map_attach_alignment(
     :returns: The signals with `aligned`.
     """
     parts: list[polars.DataFrame] = []
-    for timeframe in ("d", "w", "m"):
+    for timeframe in rules_.TIMEFRAMES:
         group = signals.filter(polars.col("timeframe").eq(timeframe)).sort("day")
         if timeframe == "m":
             parts.append(group.with_columns(aligned=polars.lit(None, polars.Boolean)))
