@@ -22,7 +22,7 @@ import {
 } from "../lib/format";
 import { loadBars, type Bars } from "../lib/data";
 import { useReady } from "../lib/ready";
-import { BAR_WORDS, TIMEFRAMES, TIMEFRAME_WORDS, baseRateFor, selectSignal, share, sigOf, signalSentence, signedSince, type Mark, type Timeframe } from "../lib/signals";
+import { BAR_WORDS, EVENT_WORDS, TIMEFRAMES, TIMEFRAME_WORDS, baseRateFor, selectSignal, share, sigOf, signalSentence, signedSince, type Mark, type Timeframe } from "../lib/signals";
 import type { Route } from "../lib/route";
 import { drawdowns, maxDrawdown, monthlyReturns, RANGES, rangeStart, startIndex, totalReturn, type Series } from "../lib/stats";
 import { useTokens, type Tokens } from "../lib/theme";
@@ -223,7 +223,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
         ) : frame.days.length === 0 ? (
           <EmptyNote>No {TIMEFRAME_WORDS[tf].toLowerCase()} bars stored for {instrument.ticker} yet.</EmptyNote>
         ) : (
-          <CandleChart series={frame} structure={structure} assetClass={instrument.assetClass} tokens={t} range={route.range} ma50={route.ma50} ma200={route.ma200} log={route.log} height={520} label={`Candlestick chart of ${instrument.name}, ${TIMEFRAME_WORDS[tf].toLowerCase()}, ${route.range}`} />
+          <CandleChart series={frame} structure={structure} assetClass={instrument.assetClass} tokens={t} range={route.range} ma50={route.ma50} ma200={route.ma200} log={route.log} height={520} label={`Candlestick chart of ${instrument.name}, ${TIMEFRAME_WORDS[tf].toLowerCase()}, ${route.range}${structure.selected === null ? "" : `; selected signal: ${EVENT_WORDS[structure.selected.event].toLowerCase()}, level ${formatPrice(structure.selected.level, instrument.assetClass)}, invalid at ${formatPrice(structure.selected.stop, instrument.assetClass)}`}`} />
         )}
       </Card>
 

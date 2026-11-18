@@ -255,7 +255,7 @@ export default function Signals({ data, route, update }: Props) {
         )}
       </Card>
 
-      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid gap-3 sm:gap-4 items-start lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
         <Card
           title={`Base rates for ${words}`}
           subtitle="Rose is the share of signals whose price moved their way at the horizon; Any bar is the same over every bar; Edge is the mean return less the any-bar mean"
@@ -268,7 +268,7 @@ export default function Signals({ data, route, update }: Props) {
         >
           {stats === null ? <Block height={300} /> : rates.length === 0 ? <EmptyNote>No base rates yet for {words} with these filters.</EmptyNote> : <RatesTable rows={rates} />}
         </Card>
-        <Card title="Edge over any bar (pp)" subtitle="Mean signed return less the any-bar mean, at the chosen horizon">
+        <Card title="Edge over any bar (pp)" subtitle="Mean signed return less the any-bar mean, at the chosen horizon; D is daily, W weekly, M monthly">
           {stats === null ? <Block height={300} /> : edges.length === 0 ? <EmptyNote>No edge to draw for these filters.</EmptyNote> : <EdgeBars rows={edges} label={`Edge over any bar for ${words}`} />}
         </Card>
       </div>
