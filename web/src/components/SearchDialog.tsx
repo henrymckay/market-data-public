@@ -8,6 +8,8 @@ interface SearchProps {
   instruments: readonly Instrument[];
   onClose: () => void;
   onPick: (instrument: Instrument) => void;
+  /** Called as a result is highlighted, so its bars can load before Enter. */
+  onHighlight?: (instrument: Instrument) => void;
   hint: string;
 }
 
@@ -22,7 +24,7 @@ const CLASS_LABEL: Record<string, string> = {
 };
 
 /** The ticker search: opened by `/` or Cmd/Ctrl+K, a filtered list of instruments. */
-export function SearchDialog({ open, instruments, onClose, onPick, hint }: SearchProps) {
+export function SearchDialog({ open, instruments, onClose, onPick, onHighlight, hint }: SearchProps) {
   useEffect(() => {
     if (!open) return undefined;
     const close = (event: KeyboardEvent): void => {
@@ -41,7 +43,14 @@ export function SearchDialog({ open, instruments, onClose, onPick, hint }: Searc
         aria-label="Search instruments"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <Command loop>
+        <Command
+          loop
+          onValueChange={(value) => {
+            const ticker = value.split(" ")[0]?.toLowerCase();
+            const item = instruments.find((i) => i.ticker.toLowerCase() === ticker);
+            if (item !== undefined) onHighlight?.(item);
+          }}
+        >
           <Command.Input
             autoFocus
             placeholder="Search by ticker or name"

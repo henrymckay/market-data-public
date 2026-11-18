@@ -224,6 +224,10 @@ export function Markets({ data, route, update }: ViewProps) {
 
       {failed ? (
         <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the market overview: the API didn&rsquo;t answer. Other screens may still work.</ErrorNote>
+      ) : items?.length === 0 ? (
+        <Card title="Markets">
+          <EmptyNote>No instruments stored yet &mdash; the first nightly writes here.</EmptyNote>
+        </Card>
       ) : (
         <>
           {items === null ? (
