@@ -44,14 +44,15 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - run: uv run npm --prefix api ci --ignore-scripts
+      # `secrets` uploads each named environment variable as a Worker secret
+      # before the command runs, so the first deploy finds the secret that
+      # wrangler.toml declares required (the value goes in on standard input).
       - uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: api
+          secrets: MOTHERDUCK_TOKEN
           command: deploy
-      - run: printf '%s' "$MOTHERDUCK_API_TOKEN" | uv run npm --prefix api exec -- wrangler secret put MOTHERDUCK_TOKEN
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          MOTHERDUCK_API_TOKEN: ${{ secrets.MOTHERDUCK_API_TOKEN }}
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_API_TOKEN }}
