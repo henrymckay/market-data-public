@@ -14,7 +14,7 @@ def _bars(make_bars, *tickers):
 def _compute(bars, universe, clock, *, store=None, tolerance=0):
     store = store or fake.Ledger(bars=bars)
     run = operate.compute_metrics(
-        now=clock, store=store, tolerance=tolerance, universe=universe
+        bars=bars, now=clock, store=store, tolerance=tolerance, universe=universe
     )
     return run, store
 

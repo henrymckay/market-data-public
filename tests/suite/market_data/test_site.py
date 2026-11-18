@@ -35,11 +35,12 @@ def no_rejections():
 
 
 @pytest.fixture
-def overview(small_universe, site_metrics, site_bars, no_rejections):
+def overview(small_universe, site_metrics, site_bars, no_rejections, no_structure):
     return transform.build_overview(
         bars=site_bars,
         metrics=site_metrics,
         rejected=no_rejections,
+        structure=no_structure,
         tickers=small_universe,
     )
 
@@ -96,7 +97,7 @@ def test_when_a_return_is_absent_then_its_column_is_null_not_missing(overview):
 
 
 def test_when_build_overview_then_figures_keep_seven_digits_and_the_spark_five(
-    small_universe, no_rejections, make_bars
+    small_universe, no_rejections, no_structure, make_bars
 ):
     bars = make_bars(
         *(
@@ -109,6 +110,7 @@ def test_when_build_overview_then_figures_keep_seven_digits_and_the_spark_five(
         bars=bars,
         metrics=transform.build_metrics(bars),
         rejected=no_rejections,
+        structure=no_structure,
         tickers=small_universe,
     ).filter(polars.col("ticker").eq("AAA"))
 

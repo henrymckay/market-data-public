@@ -10,24 +10,26 @@ from market_data.code import port, transform
 
 def compute_metrics(
     *,
+    bars: polars.DataFrame,
     now: collections.abc.Callable[[], datetime.datetime],
     store: port.MetricsStore,
     tolerance: int,
     universe: polars.DataFrame,
 ) -> transform.Run:
-    """Recompute every metric from the stored bars, replacing metrics and overview.
+    """Recompute every metric from the bars, replacing metrics and overview.
 
     Active instruments with no bars are failed items; when none has bars,
     nothing is replaced and a failed run is recorded.
 
+    :param bars: Every stored bar, read once for the whole night.
     :param now: The clock, returning an aware UTC time.
-    :param store: Where the bars are read and the metrics and run written.
+    :param store: Where the rejected counts, universe and structure are read and the
+        metrics, overview and run written.
     :param tolerance: Failed instruments a night may absorb and stay stored.
     :param universe: The universe, whose active rows should each have bars.
     :returns: The run's manifest row, already appended to the store.
     """
     started = now()
-    bars = store.read_bars()
     metrics = transform.build_metrics(bars)
     measured = set(metrics.get_column("ticker").to_list())
     active = set(transform.active_tickers(universe))
@@ -42,6 +44,7 @@ def compute_metrics(
             bars=bars,
             metrics=metrics,
             rejected=store.read_rejected_counts(),
+            structure=store.read_structure(),
             tickers=store.read_tickers(),
         )
         store.replace_metrics(metrics, overview)

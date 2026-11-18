@@ -53,7 +53,11 @@ def connection(tmp_path, make_bars, small_universe, clock):
         )
     )
     operate.compute_metrics(
-        now=clock, store=store, tolerance=0, universe=small_universe
+        bars=store.read_bars(),
+        now=clock,
+        store=store,
+        tolerance=0,
+        universe=small_universe,
     )
     store.append_run(
         transform.Run(
@@ -80,7 +84,38 @@ def test_when_latest_then_it_is_the_last_stored_yahoo_run(connection):
         "ended": "2026-11-17T02:19:41Z",
         "outcome": "stored",
         "rows": 9,
+        "version": "2026-11-17T02:18:00Z",
     }
+
+
+@pytest.mark.parametrize("source", ["metrics", "signals"])
+def test_when_a_later_stage_run_stores_then_the_version_moves_to_its_end(
+    connection, source
+):
+    later = datetime.datetime(2026, 11, 17, 3, 5, 9, tzinfo=datetime.UTC)
+    for outcome, ended in (
+        (transform.Outcome.STORED, later),
+        (transform.Outcome.FAILED, later + datetime.timedelta(hours=1)),
+    ):
+        connection.execute(
+            "insert into runs values (?, ?, 0, ?, ?, 0, 0, 0, ?, ?)",
+            [_DAY, ended, _DAY, str(outcome), source, later],
+        )
+
+    body = _body(connection, "latest")
+
+    assert body["version"] == "2026-11-17T03:05:09Z"
+    assert body["ended"] == "2026-11-17T02:19:41Z"
+
+
+def test_when_no_metrics_run_is_stored_then_the_version_is_null(tmp_path):
+    connection = motherduck.connect(str(tmp_path / "yahoo-only.duckdb"))
+    connection.execute(
+        "insert into runs values (?, ?, 0, ?, 'stored', 0, 0, 0, 'yahoo', ?)",
+        [_DAY, _ENDED, _DAY, _STARTED],
+    )
+
+    assert _body(connection, "latest")["version"] is None
 
 
 def test_when_no_run_is_stored_then_latest_is_null(tmp_path):

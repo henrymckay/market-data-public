@@ -71,6 +71,7 @@ def database(tmp_path_factory: pytest.TempPathFactory, real_universe_session) ->
             bars=bars,
             metrics=metrics,
             rejected=store.read_rejected_counts(),
+            structure=store.read_structure(),
             tickers=store.read_tickers(),
         ),
     )
