@@ -6,7 +6,7 @@ import datetime
 
 import polars
 
-from market_data.code import port, transform
+from market_data.code import error, port, transform
 
 
 @dataclasses.dataclass(slots=True)
@@ -90,6 +90,15 @@ class Ledger:
         default_factory=list[polars.DataFrame]
     )
     runs: list[transform.Run] = dataclasses.field(default_factory=list[transform.Run])
+    structure: polars.DataFrame = dataclasses.field(
+        default_factory=lambda: polars.DataFrame(
+            schema={
+                "state": polars.String,
+                "ticker": polars.String,
+                "timeframe": polars.String,
+            }
+        )
+    )
     tickers: polars.DataFrame = dataclasses.field(
         default_factory=lambda: polars.DataFrame(schema=port.UNIVERSE)
     )
@@ -98,15 +107,15 @@ class Ledger:
         """Keep the manifest row."""
         self.runs.append(run)
 
-    def read_bars(self) -> polars.DataFrame:
-        """Return the bars."""
-        return self.bars
-
     def read_rejected_counts(self) -> polars.DataFrame:
         """Return no rejected rows."""
         return polars.DataFrame(
             schema={"ticker": polars.String, "rejected": polars.Int64}
         )
+
+    def read_structure(self) -> polars.DataFrame:
+        """Return the structure."""
+        return self.structure
 
     def read_tickers(self) -> polars.DataFrame:
         """Return the universe."""
@@ -126,3 +135,34 @@ def whole(tickers: collections.abc.Iterable[str]) -> polars.DataFrame:
         {"since": [None for _ in tickers], "ticker": list(tickers)},
         schema=port.SINCE,
     )
+
+
+@dataclasses.dataclass(slots=True)
+class SignalsLedger:
+    """A signals store that serves the period bars and universe it was given."""
+
+    periods: polars.DataFrame
+    tickers: polars.DataFrame
+    failing: bool = False
+    replaced: list[transform.Computed] = dataclasses.field(
+        default_factory=list[transform.Computed]
+    )
+    runs: list[transform.Run] = dataclasses.field(default_factory=list[transform.Run])
+
+    def append_run(self, run: transform.Run) -> None:
+        """Keep the manifest row."""
+        self.runs.append(run)
+
+    def read_period_bars(self) -> polars.DataFrame:
+        """Return the period bars."""
+        return self.periods
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the universe."""
+        return self.tickers
+
+    def replace_signals(self, computed: transform.Computed) -> None:
+        """Keep the tables, or fail as a store whose transaction rolled back."""
+        if self.failing:
+            raise error.StoreError("The load failed and was rolled back")
+        self.replaced.append(computed)

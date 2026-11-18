@@ -73,7 +73,7 @@ def test_when_connect_then_migrations_create_the_tables_and_record_the_version(
         "schema_version",
         "tickers",
     }
-    assert version == (4,)
+    assert version == (5,)
 
 
 def test_when_connect_twice_then_migrations_are_applied_once(database):
@@ -81,7 +81,7 @@ def test_when_connect_twice_then_migrations_are_applied_once(database):
 
     connection = motherduck.connect(database)
 
-    assert _count(connection, "schema_version") == 4
+    assert _count(connection, "schema_version") == 5
 
 
 def test_when_replace_twice_then_the_same_rows_remain(
@@ -255,6 +255,7 @@ def test_when_replace_metrics_then_the_overview_table_takes_the_cores_columns(
         bars=bars,
         metrics=metrics,
         rejected=store.read_rejected_counts(),
+        structure=store.read_structure(),
         tickers=store.read_tickers(),
     )
 
@@ -386,3 +387,152 @@ def test_when_a_database_at_version_3_is_connected_then_featured_and_source_are_
     assert row == (None, None)
     columns = {r[0] for r in migrated.execute("describe overview").fetchall()}
     assert {"featured", "source"} <= columns
+
+
+def _stored_bars(store, make_bars, small_universe, rows):
+    bars = make_bars(*rows)
+    store.replace(
+        port.Load(
+            since=fake.whole(sorted({row[0] for row in rows})),
+            bars=bars,
+            fetched=_STARTED,
+            rejected=polars.DataFrame(schema=port.REJECTED),
+            universe=small_universe,
+        )
+    )
+
+
+def test_when_period_bars_is_read_then_weeks_and_months_are_grouped_from_the_days(
+    database, make_bars, small_universe
+):
+    store = motherduck.Store(motherduck.connect(database))
+    thursday = datetime.date(2026, 10, 29)
+    days = [thursday + datetime.timedelta(days=offset) for offset in (0, 1, 4, 5)]
+    rows = [
+        (
+            "AAA",
+            day,
+            {
+                "adj_close": 20.0 + index,
+                "close": 10.0 + index,
+                "high": 11.0 + index,
+                "low": 9.0 - index,
+                "open": 5.0 + index,
+                "volume": 100 + index if index != 3 else None,
+            },
+        )
+        for index, day in enumerate(days)
+    ]
+    _stored_bars(store, make_bars, small_universe, rows)
+
+    periods = store.read_period_bars().sort("timeframe", "day")
+
+    assert periods.select("timeframe", "day", "last_day").rows() == [
+        ("m", datetime.date(2026, 10, 1), datetime.date(2026, 10, 30)),
+        ("m", datetime.date(2026, 11, 1), datetime.date(2026, 11, 3)),
+        ("w", datetime.date(2026, 10, 26), datetime.date(2026, 10, 30)),
+        ("w", datetime.date(2026, 11, 2), datetime.date(2026, 11, 3)),
+    ]
+    october = periods.filter(
+        polars.col("timeframe").eq("w"),
+        polars.col("day").eq(datetime.date(2026, 10, 26)),
+    ).row(0, named=True)
+    assert october == {
+        "adj_close": 21.0,
+        "close": 11.0,
+        "day": datetime.date(2026, 10, 26),
+        "high": 12.0,
+        "last_day": datetime.date(2026, 10, 30),
+        "low": 8.0,
+        "open": 5.0,
+        "ticker": "AAA",
+        "timeframe": "w",
+        "volume": 201,
+    }
+
+
+def test_when_every_volume_of_a_period_is_null_then_its_volume_is_null(
+    database, make_bars, small_universe
+):
+    store = motherduck.Store(motherduck.connect(database))
+    _stored_bars(store, make_bars, small_universe, [("AAA", _DAY, {"volume": None})])
+
+    periods = store.read_period_bars()
+
+    assert periods.get_column("volume").to_list() == [None, None]
+    assert periods.schema["volume"] == polars.Int64
+
+
+def _computed(rules, universe_frame):
+    from pytest_ import series
+
+    bars = series.daily_frame("AAA", series.DOWNTREND)
+    return transform.build_signals(
+        bars=bars,
+        periods=series.periods_of(bars),
+        rules=rules,
+        rules_id="abc",
+        tickers=universe_frame,
+        today=datetime.date(2030, 1, 1),
+    )
+
+
+def test_when_signals_are_replaced_twice_then_each_table_holds_the_last_rows_only(
+    database, rules, universe_frame
+):
+    store = motherduck.Store(motherduck.connect(database))
+    computed = _computed(rules, universe_frame)
+
+    store.replace_signals(computed)
+    store.replace_signals(computed)
+
+    assert {
+        table: _count(store.connection, table)
+        for table in ("pivots", "signals", "outcomes", "signal_stats", "structure")
+    } == {
+        "pivots": computed.pivots.height,
+        "signals": 1,
+        "outcomes": 0,
+        "signal_stats": 0,
+        "structure": computed.structure.height,
+    }
+    assert store.read_structure().height == computed.structure.height
+
+
+def test_when_a_signals_load_fails_then_every_table_keeps_its_old_rows(
+    database, rules, universe_frame
+):
+    store = motherduck.Store(motherduck.connect(database))
+    computed = _computed(rules, universe_frame)
+    store.replace_signals(computed)
+    broken = transform.Computed(
+        outcomes=computed.outcomes,
+        pivots=computed.pivots.drop("price"),
+        signal_stats=computed.signal_stats,
+        signals=computed.signals.head(0),
+        structure=computed.structure,
+    )
+
+    with pytest.raises(error.StoreError):
+        store.replace_signals(broken)
+
+    assert _count(store.connection, "signals") == 1
+
+
+def test_when_signals_are_stored_then_the_tables_take_the_cores_columns_in_order(
+    database, rules, universe_frame
+):
+    store = motherduck.Store(motherduck.connect(database))
+    computed = _computed(rules, universe_frame)
+
+    for table, frame in (
+        ("pivots", computed.pivots),
+        ("signals", computed.signals),
+        ("outcomes", computed.outcomes),
+        ("signal_stats", computed.signal_stats),
+        ("structure", computed.structure),
+    ):
+        columns = [
+            row[0] for row in store.connection.execute(f"describe {table}").fetchall()
+        ]
+        assert columns == frame.columns

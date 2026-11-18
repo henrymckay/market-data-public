@@ -12,4 +12,5 @@ from market_data.code.port.ports import Fetched as Fetched
 from market_data.code.port.ports import Load as Load
 from market_data.code.port.ports import MetricsStore as MetricsStore
 from market_data.code.port.ports import Period as Period
+from market_data.code.port.ports import SignalsStore as SignalsStore
 from market_data.code.port.ports import Sink as Sink

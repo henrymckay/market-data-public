@@ -70,12 +70,12 @@ export function tickerForSlug(slugsBody: string, slug: string): string | null {
   return typeof ticker === "string" ? ticker : null;
 }
 
-/** The data version a `latest` body names: its `ended`, or `none` before any run. */
+/** The data version a `latest` body names: its `version`, the last stored metrics run's end, or `none` before any. */
 export function versionOf(latestBody: string): string {
   const latest: unknown = JSON.parse(latestBody);
-  if (latest !== null && typeof latest === "object" && "ended" in latest) {
-    const { ended } = latest as { ended: unknown };
-    if (typeof ended === "string") return ended;
+  if (latest !== null && typeof latest === "object" && "version" in latest) {
+    const { version } = latest as { version: unknown };
+    if (typeof version === "string") return version;
   }
   return "none";
 }
