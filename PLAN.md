@@ -381,6 +381,7 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 ### Questions
 
 - **Q1** Should the nightly use a MotherDuck service account's token, reaching only its own database, instead of your personal token, which reaches all your databases from a public repository's Actions? — recommended: yes, create a service account (Lite allows two) and replace the `MOTHERDUCK_TOKEN` secret; blocks nothing, the build proceeds on A1.
+- **Q3** Should each instrument carry a quote unit (`USD`, `index points`, `USD per oz`) in the universe so the headline tiles and the Ticker's last-close tile can name it? — live evaluator round 2 failed criterion 8 (Copy) on that alone; the table subtitle names the unit already; recommended: yes, a `unit` column in `universe.csv` and `tickers` (a migration); blocks nothing, M4 ticked on it as open polish.
 - **Q2** At teardown, delete the repository, drop the MotherDuck database and revoke the token? — recommended: yes, by the README's teardown commands, run by you since each is irreversible; blocks nothing.
 
 ### Ideas
@@ -393,4 +394,5 @@ Read against `design-interface`'s Defaults to avoid: no animation on data update
 - **I7** Preload the Inter latin font and brotli-compress the site data on the host; the throttled cold load (1.6 s at 1.6 Mbit/s, 150 ms) is over 1.5 s though the loopback one is 0.5 s — costs a hashed-name lookup in the build; not built.
 - **I8** A colour-scale legend for the treemap, tap-for-detail on a phone's small tiles, and the instrument in the Ticker page title — evaluator round 2 nits; not built.
 - **I9** Add the Lightweight Charts attribution as footer text and turn the logo off (`attributionLogo: false`), so it stops covering the volume pane's corner; the live age chip also stays a skeleton when `overview.parquet` fails to load — live evaluator round 1 nits; not built.
+- **I10** The live cold load on a throttled 1.6 Mbit/s, 150 ms link was 1.9 s (budget 1.5 s) while a normal link's median was 0.5 s over seven cold loads — same cause as I7; not built.
 - **I5** An ntfy alert on a failed or missed night (`send-messages`) — costs a topic secret and a status workflow; not built.
