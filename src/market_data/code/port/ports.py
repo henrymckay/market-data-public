@@ -167,3 +167,68 @@ class SignalsStore(typing.Protocol):
         :raises StoreError: If the transaction fails; nothing is replaced.
         """
         ...
+
+
+type Send = collections.abc.Callable[[transform.Message, bytes | None], str]
+type Render = collections.abc.Callable[
+    [transform.ChartRequest, polars.DataFrame, polars.DataFrame], bytes
+]
+
+
+class AlertsStore(typing.Protocol):
+    """Where the notify stage reads what is due and records what was sent."""
+
+    def append_alerts(self, rows: polars.DataFrame) -> None:
+        """Append `alerts` rows, one per signal a sent message named."""
+        ...
+
+    def read_alert_state(self) -> str | None:
+        """Return the recorded health state, or none before any."""
+        ...
+
+    def read_chart_bars(
+        self, ticker: str, timeframe: str, limit: int
+    ) -> polars.DataFrame:
+        """Return the last `limit` bars of a timeframe, oldest first.
+
+        The columns are `close`, `day`, `high`, `low` and `open`.
+        """
+        ...
+
+    def read_chart_pivots(self, ticker: str, timeframe: str) -> polars.DataFrame:
+        """Return the pivots of a timeframe: `day`, `kind`, `label` and `price`."""
+        ...
+
+    def read_missing(self) -> tuple[str, ...]:
+        """Return the active instruments that have no bars, sorted."""
+        ...
+
+    def read_runs(self) -> polars.DataFrame:
+        """Return every manifest row."""
+        ...
+
+    def read_sent(self) -> polars.DataFrame:
+        """Return `id` of every signal a sent message named."""
+        ...
+
+    def read_signal_stats(self) -> polars.DataFrame:
+        """Return every `signal_stats` row."""
+        ...
+
+    def read_signals(self, since: datetime.date) -> polars.DataFrame:
+        """Return the stored signals known on or after `since`, every grade."""
+        ...
+
+    def read_structure(self) -> polars.DataFrame:
+        """Return `state`, `ticker` and `timeframe` of the stored structure."""
+        ...
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the stored universe."""
+        ...
+
+    def replace_alert_state(
+        self, *, changed: datetime.datetime, detail: str, state: str
+    ) -> None:
+        """Replace the one `alert_state` row."""
+        ...

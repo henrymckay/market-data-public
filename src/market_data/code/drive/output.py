@@ -5,7 +5,7 @@ import sys
 
 import polars
 
-from market_data.code import transform
+from market_data.code import operate, transform
 
 _TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -72,3 +72,76 @@ def display_rates(rates: polars.DataFrame, *, table: bool) -> None:
             )
             + "\n"
         )
+
+
+def display_results(results: collections.abc.Sequence[operate.Result]) -> None:
+    """Write one CSV row per message sent: `kind,title,signals,status`."""
+    sys.stdout.write(
+        polars.DataFrame(
+            {
+                "kind": [result.kind for result in results],
+                "title": [result.title for result in results],
+                "signals": [result.signals for result in results],
+                "status": [result.status for result in results],
+            },
+            schema={
+                "kind": polars.String,
+                "title": polars.String,
+                "signals": polars.Int64,
+                "status": polars.String,
+            },
+        ).write_csv()
+    )
+
+
+def _actions_text(message: transform.Message) -> str:
+    """Return the message's buttons as `label=url` pairs."""
+    return " | ".join(f"{action.label}={action.url}" for action in message.actions)
+
+
+def display_messages(
+    messages: collections.abc.Sequence[transform.Message], *, table: bool
+) -> None:
+    """Write every message whole: as CSV, or laid out as a person would read it.
+
+    :param messages: What a run would send.
+    :param table: Whether to lay each message out as text, rather than write CSV.
+    """
+    if not table:
+        sys.stdout.write(
+            polars.DataFrame(
+                {
+                    "kind": [message.kind for message in messages],
+                    "title": [message.title for message in messages],
+                    "message": [message.message for message in messages],
+                    "priority": [message.priority for message in messages],
+                    "tags": [",".join(message.tags) for message in messages],
+                    "click": [message.click or "" for message in messages],
+                    "actions": [_actions_text(message) for message in messages],
+                    "attachment": [message.attachment or "" for message in messages],
+                    "signals": [len(message.signals) for message in messages],
+                },
+                schema={
+                    "kind": polars.String,
+                    "title": polars.String,
+                    "message": polars.String,
+                    "priority": polars.Int64,
+                    "tags": polars.String,
+                    "click": polars.String,
+                    "actions": polars.String,
+                    "attachment": polars.String,
+                    "signals": polars.Int64,
+                },
+            ).write_csv()
+        )
+        return
+    for message in messages:
+        lines = [
+            f"{message.kind} (priority {message.priority}): {message.title}",
+            *(f"  {line}" for line in message.message.splitlines()),
+            f"  tags: {', '.join(message.tags)}",
+            *([f"  click: {message.click}"] if message.click else []),
+            *(f"  button {action.label}: {action.url}" for action in message.actions),
+            *([f"  image: {message.attachment}"] if message.attachment else []),
+        ]
+        sys.stdout.write("\n".join(lines) + "\n\n")

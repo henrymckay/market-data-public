@@ -11,3 +11,11 @@ class SourceError(Exception):
 
 class StoreError(Exception):
     """The store failed while loading or reading (exit code 1)."""
+
+
+class SendError(Exception):
+    """The alert channel refused or never answered a message, retries included."""
+
+
+class ChartError(Exception):
+    """A chart image could not be drawn."""

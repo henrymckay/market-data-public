@@ -30,7 +30,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --no-dev
-      - run: |
+      - id: run
+        run: |
           flags=()
           if [[ "$(date -u +%u)" == 7 || "$FULL" == true ]]; then flags+=(--full); fi
           uv run --no-dev market-data-cli nightly --log-level info "${flags[@]}"
@@ -41,6 +42,14 @@ jobs:
         run: uv run --no-dev market-data-cli status --log-level info
         env:
           motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
+      - name: Tell the owner a step before the command failed
+        if: ${{ failure() && steps.run.outcome == 'skipped' }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -sf --max-time 10 -H "Title: Market data: nightly job broke" -H "Priority: 5" -H "Tags: warning" \
+            -H "Click: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -d "A step before the command ran failed in the nightly job; open the run." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null || true
   # Fills the API's cache so no visitor waits on a miss (PLAN.md, D60, D98): the
   # featured instruments only. It holds no secret: every request is a public GET.
   warm:
@@ -77,3 +86,41 @@ jobs:
           echo "$results"
           [[ "$(grep -c -v '^200 ' <<<"$results")" == 0 ]] || fail=1
           exit "$fail"
+      - name: Tell the owner the warm job failed
+        if: ${{ failure() }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -sf --max-time 10 -H "Title: Market data: warm job broke" -H "Priority: 5" -H "Tags: warning" \
+            -H "Click: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -d "The API did not show this night's data in time; open the run." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null || true
+  # Sends the night's pushes and digests, and a health message on a change of
+  # state (PLAN.md, D91, D93); after warm so a tapped push opens a cached chart.
+  notify:
+    needs: [nightly, warm]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - id: run
+        run: uv run --no-dev market-data-cli notify --log-level info
+        env:
+          motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      - name: Tell the owner a step before the command failed
+        if: ${{ failure() && steps.run.outcome == 'skipped' }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -sf --max-time 10 -H "Title: Market data: nightly job broke" -H "Priority: 5" -H "Tags: warning" \
+            -H "Click: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -d "A step before the command ran failed in the notify job; open the run." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null || true
