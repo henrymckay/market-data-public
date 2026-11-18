@@ -127,12 +127,12 @@ class MetricsStore(typing.Protocol):
         """Append one manifest row."""
         ...
 
-    def read_bars(self) -> polars.DataFrame:
-        """Return every stored bar, with `BARS`' columns."""
-        ...
-
     def read_rejected_counts(self) -> polars.DataFrame:
         """Return `ticker` and `rejected`, the quarantined rows per instrument."""
+        ...
+
+    def read_structure(self) -> polars.DataFrame:
+        """Return `state`, `ticker` and `timeframe` of the stored structure."""
         ...
 
     def read_tickers(self) -> polars.DataFrame:
@@ -143,4 +143,27 @@ class MetricsStore(typing.Protocol):
         self, metrics: polars.DataFrame, overview: polars.DataFrame
     ) -> None:
         """Replace the whole `metrics` and `overview` tables, as one unit."""
+        ...
+
+
+class SignalsStore(typing.Protocol):
+    """Where the signals stage reads period bars and the universe and writes tables."""
+
+    def append_run(self, run: transform.Run) -> None:
+        """Append one manifest row."""
+        ...
+
+    def read_period_bars(self) -> polars.DataFrame:
+        """Return every weekly and monthly bar of the `period_bars` view."""
+        ...
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the stored universe."""
+        ...
+
+    def replace_signals(self, computed: transform.Computed) -> None:
+        """Replace the pivots, signals, outcomes, base rates and structure as one unit.
+
+        :raises StoreError: If the transaction fails; nothing is replaced.
+        """
         ...

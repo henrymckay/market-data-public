@@ -7,7 +7,8 @@ import pandas
 import polars
 import pytest
 
-from market_data.code import port
+from market_data.code import port, transform
+from market_data.code.adapt import rules as rules_adapter
 from market_data.code.adapt import universe as universe_adapter
 
 _DATA = pathlib.Path(__file__).parent.parent / "data"
@@ -74,6 +75,18 @@ def small_universe() -> polars.DataFrame:
 
 
 @pytest.fixture
+def no_structure() -> polars.DataFrame:
+    """A stored structure with no row."""
+    return polars.DataFrame(
+        schema={
+            "state": polars.String,
+            "ticker": polars.String,
+            "timeframe": polars.String,
+        }
+    )
+
+
+@pytest.fixture
 def real_universe() -> polars.DataFrame:
     """The packaged universe."""
     return universe_adapter.read_universe()
@@ -94,3 +107,33 @@ def clock():
         for minute in range(100)
     )
     return lambda: next(ticks)
+
+
+@pytest.fixture
+def rules():
+    """The packaged rules with one-bar ATRs, so hand-built paths set the swings."""
+    packaged = rules_adapter.read_rules()
+    return packaged.model_copy(
+        update={
+            "atr_bars": 1,
+            "swing_atr": transform.PerTimeframe(d=2.0, m=2.0, w=2.0),
+        }
+    )
+
+
+@pytest.fixture
+def universe_frame() -> polars.DataFrame:
+    """A one-stock universe for the signals tests."""
+    return polars.DataFrame(
+        {
+            "active": [True],
+            "asset_class": ["stock"],
+            "featured": [True],
+            "name": ["Alpha"],
+            "quote_type": ["price"],
+            "sector": ["Tech"],
+            "source": ["sp500"],
+            "ticker": ["AAA"],
+        },
+        schema=port.UNIVERSE,
+    )

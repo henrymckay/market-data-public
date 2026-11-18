@@ -182,9 +182,9 @@ def test_when_nightly_then_one_header_and_a_row_per_stage_and_exit_0(
 
     lines = _rows(result.stdout)
     assert result.exit_code == 0
-    assert [line[8] for line in lines[1:]] == ["yahoo", "metrics"]
-    assert [line[4] for line in lines[1:]] == ["stored", "stored"]
-    assert len(lines) == 3
+    assert [line[8] for line in lines[1:]] == ["yahoo", "signals", "metrics"]
+    assert [line[4] for line in lines[1:]] == ["stored", "stored", "stored"]
+    assert len(lines) == 4
     connection = duckdb.connect(database, read_only=True)
     stored = connection.execute("select count(distinct ticker) from metrics").fetchone()
     assert stored == (real_universe.height,)
@@ -206,7 +206,11 @@ def test_when_nightly_and_one_instrument_has_no_data_then_exit_1_naming_it(
 
     assert result.exit_code == 1
     assert "MSFT failed" in result.stderr
-    assert [line[4] for line in _rows(result.stdout)[1:]] == ["partial", "partial"]
+    assert [line[4] for line in _rows(result.stdout)[1:]] == [
+        "partial",
+        "stored",
+        "partial",
+    ]
 
 
 def test_when_status_after_a_good_nightly_then_exit_0_and_key_value_rows(
@@ -275,3 +279,144 @@ def test_when_fetch_is_full_then_every_instrument_is_asked_for_max(
     runner.invoke(cli.app, ["fetch", "AAPL", "--full"])
 
     assert periods == ["max", "1mo", "max"]
+
+
+_RATES_HEADER = "event,timeframe,horizon,n,hit_rate,baseline_hit,edge,held_rate"
+
+
+def _table_counts(database, *tables):
+    connection = duckdb.connect(database, read_only=True)
+    return {
+        table: connection.execute(f"select count(*) from {table}").fetchall()[0][0]
+        for table in tables
+    }
+
+
+def test_when_signals_runs_then_it_stores_the_five_tables_and_one_manifest_row(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+
+    result = runner.invoke(cli.app, ["signals"])
+
+    lines = _rows(result.stdout)
+    counts = _table_counts(database, "signals", "pivots", "structure", "signal_stats")
+    assert result.exit_code == 0
+    assert lines[0] == _HEADER.split(",")
+    assert (lines[1][4], lines[1][6], lines[1][8]) == ("stored", "0", "signals")
+    assert int(lines[1][7]) == counts["signals"] > 0
+    assert counts["pivots"] > 0
+    assert counts["structure"] == 6
+    assert counts["signal_stats"] > 0
+
+
+def test_when_signals_runs_twice_then_the_tables_hold_the_same_rows(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+    runner.invoke(cli.app, ["signals"])
+    first = _table_counts(database, "signals", "pivots", "outcomes", "signal_stats")
+
+    runner.invoke(cli.app, ["signals"])
+
+    assert (
+        _table_counts(database, "signals", "pivots", "outcomes", "signal_stats")
+        == first
+    )
+
+
+def test_when_signals_runs_dry_then_nothing_is_written_and_the_base_rates_print(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+
+    result = runner.invoke(cli.app, ["signals", "--dry-run"])
+
+    lines = _rows(result.stdout)
+    assert result.exit_code == 0
+    assert ",".join(lines[0]) == _RATES_HEADER
+    assert len(lines) > 1
+    assert _table_counts(database, "signals", "pivots", "runs") == {
+        "signals": 0,
+        "pivots": 0,
+        "runs": 1,
+    }
+
+
+def test_when_the_format_is_table_then_the_columns_are_aligned(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+
+    result = runner.invoke(cli.app, ["signals", "--dry-run", "--format", "table"])
+
+    lines = result.stdout.splitlines()
+    assert result.exit_code == 0
+    assert lines[0].split() == _RATES_HEADER.split(",")
+    assert len({len(line) for line in lines}) == 1
+
+
+def test_when_the_rules_file_lacks_a_key_then_exit_2_names_it(
+    runner, database, answering, tmp_path
+):
+    rules = tmp_path / "alt.yaml"
+    rules.write_text("atr-bars: 14\n")
+
+    result = runner.invoke(cli.app, ["signals", "--rules", str(rules), "--dry-run"])
+
+    assert result.exit_code == 2
+    assert "alerts" in result.stderr
+
+
+def test_when_the_rules_file_has_an_unknown_grade_then_exit_2(
+    runner, database, answering, tmp_path
+):
+    packaged = yahoo.resources.files("market_data").joinpath(
+        "data/transform/monitor.yaml"
+    )
+    rules = tmp_path / "alt.yaml"
+    rules.write_text(
+        packaged.read_text().replace("grades: {A: 3, B: 2}", "grades: {A: 3, D: 2}")
+    )
+
+    result = runner.invoke(cli.app, ["signals", "--rules", str(rules)])
+
+    assert result.exit_code == 2
+    assert "grades" in result.stderr
+
+
+def test_when_another_rules_file_is_dry_run_then_its_rates_differ_from_the_packaged(
+    runner, database, answering, tmp_path
+):
+    runner.invoke(cli.app, ["fetch", "AAPL", "MSFT"])
+    packaged = yahoo.resources.files("market_data").joinpath(
+        "data/transform/monitor.yaml"
+    )
+    rules = tmp_path / "alt.yaml"
+    rules.write_text(packaged.read_text().replace("d: 2.5", "d: 1.0", 1))
+
+    first = runner.invoke(cli.app, ["signals", "--dry-run"])
+    second = runner.invoke(cli.app, ["signals", "--rules", str(rules), "--dry-run"])
+
+    assert first.exit_code == second.exit_code == 0
+    assert first.stdout != second.stdout
+
+
+def test_when_there_are_no_bars_then_signals_fails_and_stores_nothing(runner, database):
+    result = runner.invoke(cli.app, ["signals"])
+
+    assert result.exit_code == 1
+    assert ",failed," in result.stdout
+    assert _table_counts(database, "signals") == {"signals": 0}
+
+
+def test_when_nightly_runs_then_the_overview_carries_each_instruments_trend(
+    runner, database, answering
+):
+    runner.invoke(cli.app, ["nightly"])
+
+    connection = duckdb.connect(database, read_only=True)
+    states = connection.execute(
+        "select distinct trend_d from overview where ticker = 'AAPL'"
+    ).fetchall()
+    assert states[0][0] in {"up", "down", "turning_up", "turning_down", "none"}

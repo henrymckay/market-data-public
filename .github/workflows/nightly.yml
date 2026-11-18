@@ -55,9 +55,9 @@ jobs:
       - name: Wait for the API to see this run
         run: |
           for _ in $(seq 40); do
-            ended="$(curl -sf "$API_URL/api/latest?v=$(date +%s)" | jq -r '.ended // empty')" || ended=""
-            echo "api ended=${ended:-none} nightly started=$STARTED"
-            if [[ -n "$ended" && ! "$ended" < "$STARTED" ]]; then exit 0; fi
+            version="$(curl -sf "$API_URL/api/latest?v=$(date +%s)" | jq -r '.version // empty')" || version=""
+            echo "api version=${version:-none} nightly started=$STARTED"
+            if [[ -n "$version" && ! "$version" < "$STARTED" ]]; then exit 0; fi
             sleep 30
           done
           echo "::error::the API's version never reached this run within 20 minutes"

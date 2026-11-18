@@ -47,3 +47,28 @@ def display_changes(changes: transform.Changes) -> None:
             {"added": [len(changes.added)], "removed": [len(changes.removed)]}
         ).write_csv()
     )
+
+
+def display_rates(rates: polars.DataFrame, *, table: bool) -> None:
+    """Write the base rates as CSV, or as columns aligned for a person.
+
+    :param rates: The rates, one row per event, timeframe and horizon.
+    :param table: Whether to align the columns, rather than write CSV.
+    """
+    if not table:
+        sys.stdout.write(rates.write_csv(float_precision=4))
+        return
+    cells = [
+        [f"{value:.4f}" if isinstance(value, float) else str(value) for value in row]
+        for row in [rates.columns, *rates.iter_rows()]
+    ]
+    widths = [
+        max(len(row[index]) for row in cells) for index in range(len(rates.columns))
+    ]
+    for row in cells:
+        sys.stdout.write(
+            "  ".join(
+                cell.rjust(width) for cell, width in zip(row, widths, strict=True)
+            )
+            + "\n"
+        )

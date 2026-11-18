@@ -91,3 +91,27 @@ def test_when_no_run_exists_then_status_is_unhealthy(missing):
 
     assert not status.healthy
     assert _value(status, "outcome") == "none"
+
+
+def test_when_the_signals_stage_failed_then_the_job_is_unhealthy():
+    runs = _runs(
+        (_hours_ago(10), 0, "stored", "yahoo"),
+        (_hours_ago(9), 0, "failed", "signals"),
+        (_hours_ago(8), 0, "stored", "metrics"),
+    )
+
+    status = transform.build_status(runs, missing=[], now=_NOW)
+
+    assert status.healthy is False
+
+
+def test_when_every_stage_including_signals_stored_then_healthy():
+    runs = _runs(
+        (_hours_ago(10), 0, "stored", "yahoo"),
+        (_hours_ago(9), 0, "stored", "signals"),
+        (_hours_ago(8), 0, "stored", "metrics"),
+    )
+
+    status = transform.build_status(runs, missing=[], now=_NOW)
+
+    assert status.healthy is True
