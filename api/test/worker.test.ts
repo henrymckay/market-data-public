@@ -8,7 +8,9 @@ const LATEST =
   '{"day":"2026-11-17","ended":"2026-11-18T02:19:41Z","outcome":"stored","rows":9,"version":"2026-11-18T02:25:07Z"}';
 const OVERVIEW = '[{"ticker":"^GSPC","slug":"gspc"},{"ticker":"AAPL","slug":"aapl"},{"ticker":"BTC-USD","slug":"btc-usd"}]';
 const SLUGS = '{"gspc":"^GSPC","aapl":"AAPL","btc-usd":"BTC-USD"}';
-const BARS = '{"ticker":"^GSPC","day":["2026-11-16"]}';
+const SIGNALS = '[{"id":"AAPL|d|break_up|2026-11-17","known":"2026-11-17","slug":"aapl"}]';
+const STATS = '[{"asset_class":"all","event":"break_up","grade":"all","horizon":20,"timeframe":"d"}]';
+const BARS ='{"ticker":"^GSPC","day":["2026-11-16"]}';
 const ORIGIN = "https://henrymckay.github.io";
 
 /** A fake store that answers by query text and counts what it was asked. */
@@ -20,6 +22,8 @@ function fakeStore(overrides: Partial<Record<string, string>> = {}) {
     runs: "[]",
     bars: BARS,
     slugs: SLUGS,
+    signals: SIGNALS,
+    stats: STATS,
     ...overrides,
   };
   const store = async (query: string, params: string[]): Promise<string> => {
@@ -27,11 +31,15 @@ function fakeStore(overrides: Partial<Record<string, string>> = {}) {
       ? "bars"
       : query.includes("json_group_object")
         ? "slugs"
-        : query.includes("from overview")
-          ? "overview"
-          : query.includes("from newest")
-            ? "runs"
-            : "latest";
+        : query.includes("from recent")
+          ? "signals"
+          : query.includes("from signal_stats")
+            ? "stats"
+            : query.includes("from overview")
+              ? "overview"
+              : query.includes("from newest")
+                ? "runs"
+                : "latest";
     calls.push({ name, params });
     const body = bodies[name];
     if (body === undefined) throw new StoreUnavailableError();
@@ -84,6 +92,21 @@ describe("data endpoints", () => {
 
     expect(await first.text()).toBe(BARS);
     expect(calls.filter((call) => call.name === "bars")).toEqual([{ name: "bars", params: ["^GSPC"] }]);
+  });
+
+  it.each([
+    ["/api/signals", SIGNALS],
+    ["/api/stats", STATS],
+  ])("serves %s under the version, querying the store once", async (path, expected) => {
+    const { store, calls } = fakeStore();
+    const worker = createWorker(() => store);
+
+    const first = await worker.fetch(get(path), testEnv());
+    await worker.fetch(get(`${path}?v=x`), testEnv());
+
+    expect(await first.text()).toBe(expected);
+    expect(first.headers.get("ETag")).toBe('"2026-11-18T02:25:07Z"');
+    expect(calls.filter((call) => call.name === path.slice(5))).toHaveLength(1);
   });
 
   it("resolves a slug through the slugs body, never the overview", async () => {
@@ -257,7 +280,7 @@ describe("when MotherDuck fails", () => {
 });
 
 describe("the cron", () => {
-  it("fills overview, runs and slugs under a new version, then moves it", async () => {
+  it("fills overview, runs, slugs, signals and stats under a new version, then moves it", async () => {
     const { store, calls } = fakeStore();
     const worker = createWorker(() => store);
 
@@ -267,7 +290,9 @@ describe("the cron", () => {
     expect(await cache.version()).toBe("2026-11-18T02:25:07Z");
     expect(await cache.get("2026-11-18T02:25:07Z", "overview")).toBe(OVERVIEW);
     expect(await cache.get("2026-11-18T02:25:07Z", "slugs")).toBe(SLUGS);
-    expect(calls.map((call) => call.name)).toEqual(["latest", "overview", "runs", "slugs"]);
+    expect(await cache.get("2026-11-18T02:25:07Z", "signals")).toBe(SIGNALS);
+    expect(await cache.get("2026-11-18T02:25:07Z", "stats")).toBe(STATS);
+    expect(calls.map((call) => call.name)).toEqual(["latest", "overview", "runs", "slugs", "signals", "stats"]);
   });
 
   it("queries only latest when the version has not moved", async () => {
@@ -289,7 +314,17 @@ describe("the docs page", () => {
     const html = await response.text();
 
     expect(response.headers.get("Content-Type")).toContain("text/html");
-    for (const path of ["/api/latest", "/api/overview", "/api/runs", "/api/bars/{slug}"]) expect(html).toContain(path);
+    for (const path of ["/api/latest", "/api/overview", "/api/runs", "/api/bars/{slug}", "/api/signals", "/api/stats"]) {
+      expect(html).toContain(path);
+    }
     expect(calls).toEqual([]);
+  });
+
+  it("describes the structure the bars body gained", async () => {
+    const { store } = fakeStore();
+    const html = await (await createWorker(() => store).fetch(get("/"), testEnv())).text();
+
+    for (const field of ["weekly", "monthly", "pivots", "signals"]) expect(html).toContain(field);
+    expect(html).not.toContain("about ninety");
   });
 });
