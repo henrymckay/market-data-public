@@ -12,7 +12,6 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes("node_modules/echarts") || id.includes("node_modules/zrender")) return "echarts";
           if (id.includes("node_modules/lightweight-charts")) return "candles";
-          if (id.includes("node_modules/hyparquet")) return "parquet";
           return undefined;
         },
       },

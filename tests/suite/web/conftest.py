@@ -2,21 +2,22 @@ import datetime
 import functools
 import http.server
 import pathlib
-import shutil
 import threading
 
+import duckdb
 import numpy
 import playwright.sync_api
 import polars
 import pytest
-import typer.testing
 
 from market_data.code import port, transform
 from market_data.code.adapt import motherduck
-from market_data.code.drive import cli
+from pytest_ import stub_api
 
 _WEB = pathlib.Path(__file__).parents[3] / "web"
 _LAST_DAY = datetime.date(2026, 11, 16)
+_API_PORT = 8788
+_API_URL = f"http://127.0.0.1:{_API_PORT}"
 
 
 def _walk(ticker: str, days: list[datetime.date], rng: numpy.random.Generator):
@@ -40,10 +41,8 @@ def _walk(ticker: str, days: list[datetime.date], rng: numpy.random.Generator):
 
 
 @pytest.fixture(scope="session")
-def site_data(
-    tmp_path_factory: pytest.TempPathFactory, real_universe_session
-) -> pathlib.Path:
-    """The site data of a synthetic year for every instrument, exported by the CLI."""
+def database(tmp_path_factory: pytest.TempPathFactory, real_universe_session) -> str:
+    """A store holding a synthetic year for every instrument, as `compute` leaves it."""
     root = tmp_path_factory.mktemp("site")
     database = str(root / "market.duckdb")
     rng = numpy.random.default_rng(7)
@@ -91,18 +90,7 @@ def site_data(
             )
         )
     connection.close()
-    out = root / "data"
-    import os
-
-    os.environ["MARKET_DATA_DATABASE"] = database
-    try:
-        result = typer.testing.CliRunner().invoke(
-            cli.app, ["export", "--output", str(out)]
-        )
-    finally:
-        del os.environ["MARKET_DATA_DATABASE"]
-    assert result.exit_code == 0, result.stderr
-    return out
+    return database
 
 
 @pytest.fixture(scope="session")
@@ -124,20 +112,35 @@ def _serve(directory: pathlib.Path):
 
 
 @pytest.fixture(scope="session")
-def served(tmp_path_factory: pytest.TempPathFactory, site_data: pathlib.Path):
-    """The built dashboard over the synthetic site data, on a free loopback port."""
+def stub(database: str):
+    """The API's queries over the synthetic store, where the built page looks for it."""
+    connection = duckdb.connect(database, read_only=True)
+    stub = stub_api.Stub(connection)
+    try:
+        server = stub_api.serve(stub, _API_PORT)
+    except OSError:
+        pytest.fail(f"port {_API_PORT} is taken: the smokes' stub API needs it")
+    yield stub
+    server.shutdown()
+    server.server_close()
+    connection.close()
+
+
+@pytest.fixture(scope="session")
+def served(stub: stub_api.Stub):
+    """The built dashboard on a free loopback port, with the stub API running."""
     dist = _WEB / "dist"
     if not (dist / "index.html").exists():
         pytest.fail(
-            "web/dist is missing: run `uv run npm --prefix web run build` first"
+            "web/dist is missing: run "
+            f"`VITE_API_URL={_API_URL} uv run npm --prefix web run build` first"
         )
-    root = tmp_path_factory.mktemp("served")
-    shutil.copytree(
-        dist, root, dirs_exist_ok=True, ignore=shutil.ignore_patterns("data")
-    )
-    shutil.copytree(site_data, root / "data")
-    server = _serve(root)
-    yield f"http://127.0.0.1:{server.server_address[1]}/", root
+    if _API_URL not in "".join(p.read_text() for p in dist.rglob("*.js")):
+        pytest.fail(
+            f"web/dist was built for another API: rebuild with VITE_API_URL={_API_URL}"
+        )
+    server = _serve(dist)
+    yield f"http://127.0.0.1:{server.server_address[1]}/", stub
     server.shutdown()
     server.server_close()
 

@@ -24,7 +24,7 @@ const DATA_PATHS: Record<string, Endpoint> = {
 };
 
 const BARS_PREFIX = "/api/bars/";
-const SLUG = /^[a-z0-9]+$/;
+const SLUG = /^[a-z0-9-]+$/;
 
 export const notFound = (what: string): Failure => ({
   status: 404,

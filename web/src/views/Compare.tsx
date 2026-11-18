@@ -156,7 +156,7 @@ export default function Compare({ data, route, update, onSearch }: Props) {
   }, [aligned, usable, byTicker, t, slots]);
 
   if (data.overview.status === "error") {
-    return <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list. Other screens may still work; tonight&rsquo;s run rewrites the file.</ErrorNote>;
+    return <ErrorNote onRetry={data.reload}>Couldn&rsquo;t load the instrument list: the API didn&rsquo;t answer. Other screens may still work.</ErrorNote>;
   }
 
   const option = aligned === null || rows.length === 0 ? null : lineOption(aligned.days, rows, t);
@@ -187,7 +187,7 @@ export default function Compare({ data, route, update, onSearch }: Props) {
       </div>
 
       {failed.length > 0 && (
-        <ErrorNote>Couldn&rsquo;t load prices for {failed.join(", ")}. The rest are compared; tonight&rsquo;s run rewrites the files.</ErrorNote>
+        <ErrorNote>Couldn&rsquo;t load prices for {failed.join(", ")}: the API didn&rsquo;t answer. The rest are compared.</ErrorNote>
       )}
 
       {tickers.length === 0 ? (
