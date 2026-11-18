@@ -42,6 +42,8 @@ insert into metrics (day, metric, ticker, value)
 select day, metric, ticker, value from incoming_metrics
 """
 
+_INSERT_OVERVIEW = "insert into overview by name select * from incoming_overview"
+
 _SELECT_BARS = """
 select adj_close, close, day, high, low, ticker, volume from bars
 """
@@ -128,17 +130,23 @@ class Store:
             .with_columns(polars.col("ended", "started").dt.convert_time_zone("UTC"))
         )
 
-    def replace_metrics(self, metrics: polars.DataFrame) -> None:
-        """Replace the whole `metrics` table, as one unit.
+    def replace_metrics(
+        self, metrics: polars.DataFrame, overview: polars.DataFrame
+    ) -> None:
+        """Replace the whole `metrics` and `overview` tables, as one unit.
 
         :param metrics: The new rows, one per instrument and metric.
+        :param overview: The new rows, one per instrument.
         :raises StoreError: If the transaction fails; it is rolled back.
         """
         self.connection.register("incoming_metrics", metrics.to_arrow())
+        self.connection.register("incoming_overview", overview.to_arrow())
         self.connection.execute("begin transaction")
         try:
             self.connection.execute("delete from metrics")
             self.connection.execute(_INSERT_METRICS)
+            self.connection.execute("delete from overview")
+            self.connection.execute(_INSERT_OVERVIEW)
             self.connection.execute("commit")
         except duckdb.Error as failure:
             self.connection.execute("rollback")

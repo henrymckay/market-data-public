@@ -65,7 +65,16 @@ def site_data(
             universe=real_universe_session,
         )
     )
-    store.replace_metrics(transform.build_metrics(bars))
+    metrics = transform.build_metrics(bars)
+    store.replace_metrics(
+        metrics,
+        transform.build_overview(
+            bars=bars,
+            metrics=metrics,
+            rejected=store.read_rejected_counts(),
+            tickers=store.read_tickers(),
+        ),
+    )
     for source, rows in (("yahoo", bars.height), ("metrics", 1958)):
         store.append_run(
             transform.Run(

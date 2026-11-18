@@ -39,7 +39,13 @@ class Ledger:
     metrics: list[polars.DataFrame] = dataclasses.field(
         default_factory=list[polars.DataFrame]
     )
+    overviews: list[polars.DataFrame] = dataclasses.field(
+        default_factory=list[polars.DataFrame]
+    )
     runs: list[transform.Run] = dataclasses.field(default_factory=list[transform.Run])
+    tickers: polars.DataFrame = dataclasses.field(
+        default_factory=lambda: polars.DataFrame(schema=port.UNIVERSE)
+    )
 
     def append_run(self, run: transform.Run) -> None:
         """Keep the manifest row."""
@@ -49,9 +55,22 @@ class Ledger:
         """Return the bars."""
         return self.bars
 
-    def replace_metrics(self, metrics: polars.DataFrame) -> None:
-        """Keep the metrics."""
+    def read_rejected_counts(self) -> polars.DataFrame:
+        """Return no rejected rows."""
+        return polars.DataFrame(
+            schema={"ticker": polars.String, "rejected": polars.Int64}
+        )
+
+    def read_tickers(self) -> polars.DataFrame:
+        """Return the universe."""
+        return self.tickers
+
+    def replace_metrics(
+        self, metrics: polars.DataFrame, overview: polars.DataFrame
+    ) -> None:
+        """Keep the metrics and the overview."""
         self.metrics.append(metrics)
+        self.overviews.append(overview)
 
 
 @dataclasses.dataclass(slots=True)
