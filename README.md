@@ -1,6 +1,6 @@
 # market-data-public
 
-A nightly job that fetches daily prices for about ninety instruments from Yahoo Finance with `yfinance`, stores them in MotherDuck, and shows them on a dashboard that reads the store live through a small API; a throwaway end-to-end test.
+A nightly job that fetches daily prices for about 680 instruments (the S&P 500 and a curated set of indices, rates, ETFs, currencies, futures and coins) from Yahoo Finance with `yfinance`, stores them in MotherDuck, and shows them on a dashboard that reads the store live through a small API; a throwaway end-to-end test.
 
 **Live dashboard: <https://henrymckay.github.io/market-data-public/>**
 **Live API: <https://market-data-api.henrymckay.workers.dev/>** (its docs page)
@@ -24,8 +24,9 @@ A path in `MARKET_DATA_DATABASE` runs everything against a local DuckDB file and
 MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 ```
 
-- `nightly` fetches every active instrument in the universe (`src/market_data/data/transform/universe.csv`).
-- `fetch TICKER...` fetches only those instruments.
+- `nightly` fetches every active instrument in the universe (`src/market_data/data/transform/universe.csv`): its last month, or its whole history where the store has none, its newest stored day is over 25 days old, the last month contradicts the store (a restated close, a new dividend or split) or `--full` is given.
+- `fetch TICKER...` fetches only those instruments, the same way; `fetch` and `nightly` take `--full`.
+- `universe sync` brings the S&P 500 rows of the CSV in line with Wikipedia's list and prints `added,removed` counts; `--check` changes nothing and exits 1 when the CSV is out of date.
 - `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `compute`, on one connection.
 - `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old.
 - `fetch`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
@@ -33,14 +34,17 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 
 `.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand.
 Its `nightly` job runs `nightly`, then `status`, and holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
-Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest` to reach the run, then requests `/api/overview`, `/api/runs` and every `/api/bars/{slug}` so no visitor waits on a cache miss, and fails on any status but 200.
+It passes `--full` on Sundays, and on demand with the `full` input.
+Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest` to reach the run, then requests `/api/overview`, `/api/runs` and the `/api/bars/{slug}` of every featured instrument, so no visitor waits on a cache miss for the headline screens, and fails on any status but 200.
+`.github/workflows/universe.yml` runs `universe sync` at 06:00 UTC on the 1st of each month and commits `universe.csv` to `main` when it changed; its `keepalive` job enables the scheduled workflows again through the API, so GitHub's 60-day idle rule does not disable them.
 `.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, with `VITE_API_URL` from the repository variable `API_URL`.
 `.github/workflows/api.yml` tests the Worker on every push touching `api/` and deploys it from `main` with the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `MOTHERDUCK_API_TOKEN` (the read-only service account's token, uploaded as the Worker secret `MOTHERDUCK_TOKEN`).
 `.github/workflows/verify-secrets.yml`, run by hand, counts each token in every run log, the published site and a `wrangler tail` session, and prints only the counts.
 
 Run it by hand with `gh workflow run nightly.yml --ref main`.
 
-Every night replaces each answering instrument's whole history, so a re-run is safe and leaves the same rows.
+Every night replaces each answering instrument's rows from the first day it fetched, so a re-run is safe and leaves the same rows.
+The log's `Store busy for N s` line is the nightly's MotherDuck usage.
 
 ## Dashboard
 
@@ -58,7 +62,7 @@ uv run npm --prefix web run preview    # http://127.0.0.1:4173/
 The API only answers pages from the origin in its `ALLOWED_ORIGIN`; for the preview, start it with `-- --var ALLOWED_ORIGIN:http://127.0.0.1:4173` after `npm run dev`.
 A slow API shows a "still loading" note and a failed one an error with a retry; the rest of the page keeps working.
 
-Four screens: Markets, Ticker, Compare and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
+Four screens: Markets (its table of every instrument pages at 100 rows), Ticker, Compare and Runs; every view is a link (`?view=ticker&t=AAPL&range=5Y`), `/` opens the search, and the page follows the system's light or dark scheme.
 
 ## API
 

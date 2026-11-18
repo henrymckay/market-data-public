@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
+    inputs:
+      full:
+        description: Fetch every instrument's whole history, as Sundays do
+        type: boolean
+        default: false
 concurrency:
   group: data
   cancel-in-progress: false
@@ -10,7 +15,7 @@ permissions: {}
 jobs:
   nightly:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
     outputs:
@@ -25,15 +30,19 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --no-dev
-      - run: uv run --no-dev market-data-cli nightly --log-level info
+      - run: |
+          flags=()
+          if [[ "$(date -u +%u)" == 7 || "$FULL" == true ]]; then flags+=(--full); fi
+          uv run --no-dev market-data-cli nightly --log-level info "${flags[@]}"
         env:
+          FULL: ${{ inputs.full }}
           motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
       - if: ${{ !cancelled() }}
         run: uv run --no-dev market-data-cli status --log-level info
         env:
           motherduck_token: ${{ secrets.MOTHERDUCK_TOKEN }}
-  # Fills the API's cache so no visitor waits on a miss (PLAN.md, D60). It holds
-  # no secret: every request is a public GET.
+  # Fills the API's cache so no visitor waits on a miss (PLAN.md, D60, D98): the
+  # featured instruments only. It holds no secret: every request is a public GET.
   warm:
     needs: nightly
     runs-on: ubuntu-latest
@@ -61,8 +70,8 @@ jobs:
             echo "$code $path"
             [[ "$code" == 200 ]] || fail=1
           done
-          slugs="$(curl -sf --max-time 60 "$API_URL/api/overview" | jq -r '.[].slug')"
-          [[ -n "$slugs" ]] || { echo "::error::no slugs in /api/overview"; exit 1; }
+          slugs="$(curl -sf --max-time 60 "$API_URL/api/overview" | jq -r '.[] | select(.featured == true) | .slug')"
+          [[ -n "$slugs" ]] || { echo "::error::no featured slugs in /api/overview"; exit 1; }
           export API_URL
           results="$(printf '%s\n' $slugs | xargs -P 4 -I{} sh -c 'echo "$(curl -s -o /dev/null -w "%{http_code} %{time_total}s" --max-time 60 "$API_URL/api/bars/{}") /api/bars/{}"')"
           echo "$results"
