@@ -9,7 +9,7 @@ const ENDPOINTS = [
   {
     path: "/api/overview",
     summary: "One object per instrument: identity, coverage, every metric and a 63-bar sparkline, sorted by ticker.",
-    response: `[{"ticker": "AAPL", "slug": "aapl", "name": "Apple", "asset_class": "stock", "bar_count": 11575, "return_1d": 0.0121, "spark": [236.1, 239.1], "…": "…"}]`,
+    response: `[{"ticker": "AAPL", "slug": "aapl", "name": "Apple", "asset_class": "stock", "bar_count": 11576, "return_1d": 0.0121, "spark": [236.1, 239.1], "…": "…"}]`,
   },
   {
     path: "/api/runs",
@@ -22,6 +22,15 @@ const ENDPOINTS = [
     response: `{"ticker": "^GSPC", "day": ["1927-12-30", "…"], "open": [17.66], "high": [17.66], "low": [17.66], "close": [17.66], "adj_close": [17.66], "volume": [0], "dividend": [0], "split": [0]}`,
   },
 ];
+
+const FIELDS = [
+  ["Times", "`ended`, `started` and `fetched` are UTC, `2026-11-18T02:19:41Z`; `day` is a date, `2026-11-17`, in the instrument's own exchange calendar (crypto: UTC)."],
+  ["Prices", "`open`, `high`, `low` and `close` are in the instrument's own quote unit (US dollars unless an index, rate or currency pair) and adjusted for splits only; `adj_close` is also adjusted for dividends. `/api/overview`'s `last_close` is the latest `close`."],
+  ["Returns", "`return_1d` to `return_5y` are fractions (`0.0121` is +1.21%) of `adj_close`; `3y` and `5y` are annualised. `volatility_1y` is an annualised fraction and `drawdown_max_1y` a negative fraction."],
+  ["Changes", "`change_1d` to `change_5y` are absolute changes in the quote unit, in percentage points for a rate (`^TNX`), and are what a rate shows instead of a return."],
+  ["Ranges", "`high_52w` and `low_52w` are prices; `traded_value_20d` is the mean of close times volume over 20 bars, in the quote unit."],
+  ["Size", "`/api/bars/{slug}` is the whole history: about 1.4 MB for AAPL (300 KB compressed) and 2.9 MB for ^GSPC (490 KB compressed); a figure an instrument has no history for is absent or null."],
+] as const;
 
 const ERRORS = `{"error": "No instrument with slug 'xyz'; see /api/overview for the list.", "code": "not_found"}`;
 
@@ -68,6 +77,10 @@ export function docsPage(origin: string): string {
   <h1>Market data API</h1>
   <p class="muted">Daily prices for about ninety instruments, read live from MotherDuck through a cache that trails the store by at most fifteen minutes. Read-only, public data, no key.</p>
   ${sections}
+  <section>
+    <h2>Fields and units</h2>
+    ${FIELDS.map(([name, text]) => `<p><strong>${name}.</strong> ${escape(text).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>`).join("")}
+  </section>
   <section>
     <h2>Errors</h2>
     <p>Always JSON with a message and a code: 404 <code>not_found</code> for an unknown path or slug, 405 for a method other than GET, HEAD or OPTIONS, 503 <code>store_unavailable</code> with <code>Retry-After: 60</code> when MotherDuck does not answer.</p>
