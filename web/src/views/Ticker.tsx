@@ -67,7 +67,7 @@ const drawdownOption = (series: Series, from: number, t: Tokens): Option => {
 const baseRateText = (stats: Parameters<typeof baseRateFor>[0], mark: Mark, assetClass: string): string => {
   const rate = baseRateFor(stats, { assetClass, event: mark.event, timeframe: mark.timeframe });
   if (rate === null) return "";
-  return `Base rate: ${share(rate.hitRate)} moved this way within ${rate.horizon} ${BAR_WORDS[mark.timeframe]}s (${formatInteger(rate.n)} signals); any bar ${share(rate.baselineHit)}.`;
+  return `Base rate: ${share(rate.hitRate)} moved this way within ${rate.horizon} ${BAR_WORDS[mark.timeframe]}s (${formatInteger(rate.n)} ${rate.n === 1 ? "signal" : "signals"}); any bar ${share(rate.baselineHit)}.`;
 };
 
 function BaseRate({ text }: { text: string }) {
@@ -228,7 +228,7 @@ export default function Ticker({ data, route, update, onSearch }: Props) {
       </Card>
 
       {hasBars && !barsFailed && instrument !== undefined && series !== null && (
-        <Card title={`Signals, ${TIMEFRAME_WORDS[tf].toLowerCase()}`} subtitle="Newest first; Since is the price move since the signal bar, positive when it went the signal\u2019s way">
+        <Card title={`Signals, ${TIMEFRAME_WORDS[tf].toLowerCase()}`} subtitle="Newest first; Since is the price move since the signal bar, positive when it went the signal’s way">
           {marks.length === 0 ? (
             <EmptyNote>No {TIMEFRAME_WORDS[tf].toLowerCase()} signals for {instrument.ticker} yet.</EmptyNote>
           ) : (
