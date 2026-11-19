@@ -105,6 +105,18 @@ def test_when_a_daily_downtrend_breaks_then_the_signal_carries_its_evidence(
     assert (signal["aligned"], signal["score"], signal["grade"]) == (False, 1, "C")
 
 
+def test_when_no_instrument_has_enough_bars_then_no_pivots_and_structure_none(
+    rules, universe_frame
+):
+    bars = series.daily_frame("AAA", series.DOWNTREND[:10])
+
+    computed = _run(rules, universe_frame, bars)
+
+    assert computed.pivots.is_empty()
+    assert computed.signals.is_empty()
+    assert set(computed.structure.get_column("state")) <= {"none"}
+
+
 def test_when_the_volume_is_missing_or_the_prior_mean_zero_then_the_ratio_is_null(
     rules, universe_frame
 ):
