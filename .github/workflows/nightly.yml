@@ -1,6 +1,6 @@
 name: nightly
 on:
-  schedule:
+  schedule: # cron times are UTC
     - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:

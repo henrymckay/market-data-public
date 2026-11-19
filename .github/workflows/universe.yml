@@ -1,6 +1,6 @@
 name: universe
 on:
-  schedule:
+  schedule: # cron times are UTC
     - cron: "0 6 1 * *"
   workflow_dispatch:
 permissions: {}
