@@ -1,1 +1,3 @@
 agents,cache_read,cache_write,dollars,effort,input,model,output,session,stage,started,wall_minutes
+2,36286849,460552,11.85,medium,382,claude-opus-5-5,114619,799ed84f-d731-4c85-8dbc-c42c5dc5c243,review,2026-11-19T08:03:06+00:00,32.4
+1,1084183,114923,0.52,medium,28,claude-sonnet-5-5,12342,799ed84f-d731-4c85-8dbc-c42c5dc5c243,review,2026-11-19T08:03:06+00:00,32.4
