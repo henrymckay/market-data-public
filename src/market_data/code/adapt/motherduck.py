@@ -117,13 +117,19 @@ class Meter:
 def _timed[**P, T](
     work: collections.abc.Callable[typing.Concatenate[Store, P], T],
 ) -> collections.abc.Callable[typing.Concatenate[Store, P], T]:
-    """Add the seconds a store method takes to its store's meter."""
+    """Add the seconds a store method takes to its store's meter.
+
+    A driver failure becomes a `StoreError` naming the method, never the driver's
+    text, so no store call lets a `duckdb.Error` past the adapter.
+    """
 
     @functools.wraps(work)
     def run(store: Store, *args: P.args, **kwargs: P.kwargs) -> T:
         opened = time.monotonic()
         try:
             return work(store, *args, **kwargs)
+        except duckdb.Error:
+            raise error.StoreError(f"The store failed in {work.__name__}") from None
         finally:
             store.meter.seconds += time.monotonic() - opened
 

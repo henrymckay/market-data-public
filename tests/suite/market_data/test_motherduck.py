@@ -138,6 +138,27 @@ def test_when_replace_fails_then_it_rolls_back_and_raises_store_error(
     assert store.connection.execute("select close from bars").fetchall() == [(10.0,)]
 
 
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda store: store.read_tickers(),
+        lambda store: store.read_period_bars(),
+        lambda store: store.read_sent(),
+        lambda store: store.append_run(_run()),
+    ],
+    ids=["read_tickers", "read_period_bars", "read_sent", "append_run"],
+)
+def test_when_the_connection_is_lost_then_a_store_call_raises_store_error(
+    database, call
+):
+    connection = motherduck.connect(database)
+    store = motherduck.Store(connection=connection)
+    connection.close()
+
+    with pytest.raises(error.StoreError):
+        call(store)
+
+
 def test_when_append_run_then_the_manifest_row_reads_back(database):
     store = motherduck.Store(motherduck.connect(database))
 
