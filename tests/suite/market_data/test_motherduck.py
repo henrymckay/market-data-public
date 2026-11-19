@@ -159,6 +159,15 @@ def test_when_the_connection_is_lost_then_a_store_call_raises_store_error(
         call(store)
 
 
+def test_when_a_migration_fails_then_connect_raises_store_error(database):
+    clashing = duckdb.connect(database)
+    clashing.execute("create table bars (unrelated integer)")
+    clashing.close()
+
+    with pytest.raises(error.StoreError, match="0001"):
+        motherduck.connect(database)
+
+
 def test_when_append_run_then_the_manifest_row_reads_back(database):
     store = motherduck.Store(motherduck.connect(database))
 

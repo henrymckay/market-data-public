@@ -382,7 +382,10 @@ class Store:
 
 
 def _migrate(connection: duckdb.DuckDBPyConnection) -> None:
-    """Apply each numbered migration newer than the schema version, in order."""
+    """Apply each numbered migration newer than the schema version, in order.
+
+    :raises StoreError: If a migration fails; its transaction is rolled back.
+    """
     connection.execute("create table if not exists schema_version (version integer)")
     row = connection.execute("select max(version) from schema_version").fetchone()
     current = row[0] if row is not None and row[0] is not None else 0
@@ -391,9 +394,15 @@ def _migrate(connection: duckdb.DuckDBPyConnection) -> None:
         version = int(file.name.split("_")[0])
         if version > current:
             connection.execute("begin transaction")
-            connection.execute(file.read_text())
-            connection.execute("insert into schema_version values (?)", [version])
-            connection.execute("commit")
+            try:
+                connection.execute(file.read_text())
+                connection.execute("insert into schema_version values (?)", [version])
+                connection.execute("commit")
+            except duckdb.Error:
+                connection.execute("rollback")
+                raise error.StoreError(
+                    f"Migration {file.name} failed and was rolled back"
+                ) from None
             _LOGGER.info("Applied migration %s", file.name)
 
 
