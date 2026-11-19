@@ -1,6 +1,6 @@
 # market-data-public
 
-A nightly job that fetches daily prices for about 680 instruments (the S&P 500 and a curated set of indices, rates, ETFs, currencies, futures and coins) from Yahoo Finance with `yfinance`, stores them in MotherDuck, and shows them on a dashboard that reads the store live through a small API; a throwaway end-to-end test.
+A nightly job that fetches daily prices for about 680 instruments (the S&P 500 and a curated set of indices, rates, ETFs, currencies, futures and coins) from Yahoo Finance with `yfinance`, stores them in MotherDuck, finds swing highs, swing lows and changes of trend, sends the ones worth a look to the owner's phone, and shows it all on a dashboard that reads the store live through a small API; begun as an end-to-end test, now the first piece of a trading assistant.
 
 **Live dashboard: <https://henrymckay.github.io/market-data-public/>**
 **Live API: <https://market-data-api.henrymckay.workers.dev/>** (its docs page)
@@ -30,14 +30,14 @@ MARKET_DATA_DATABASE=/tmp/market.duckdb uv run market-data-cli fetch AAPL MSFT
 - `signals` recomputes every pivot, signal, outcome, base rate and structure over every stored bar, replaces the five tables in one transaction and prints its manifest row; `--rules PATH` reads another rules file, and `--dry-run` writes nothing and prints the base rates for every asset class and grade (`event,timeframe,horizon,n,hit_rate,baseline_hit,edge,held_rate`), `--format table` aligned.
 - `compute` recomputes every metric from the stored bars; `nightly` runs `fetch`, then `signals`, then `compute`, reading the bars once for the last two.
 - `notify` sends the night's alerts to the ntfy topic (see Alerts) and prints one CSV row per message, `kind,title,signals,status`; it exits 0 when every send succeeded or nothing was due, 1 when any failed, 2 when `NTFY_TOPIC` is not set. `--dry-run` needs no topic, sends and records nothing, and prints every message whole as CSV, or laid out for a person with `--format table`.
-- `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old; `--alert` also sends a health message when that verdict changed since the last one, and needs the topic.
+- `status` shows `key,value` rows (last run, outcome, age in hours, failed items, instruments with no bars, stale) and exits 1 when a source's last run did not store or the last stored `yahoo` run is over two days old; `--alert` also sends a health message when that verdict changed since the last one, needs the topic, and exits 1 when that message could not be sent.
 - `fetch`, `signals`, `compute` and `nightly` print the manifest rows as CSV with one header, one row per stage; logs, including each failed instrument by name, go to standard error.
-- Exit codes: 0 every instrument stored, 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
+- Exit codes: 0 every stage stored (a `yahoo` run with up to 5 failed instruments still counts as stored), 1 any `partial` or `failed`, 2 a usage or configuration error such as a missing token.
 
 `.github/workflows/nightly.yml` runs at 02:17 UTC every day and on demand.
 Its `nightly` job runs `nightly`, then `status`, and holds the repository secret `MOTHERDUCK_TOKEN` (as `motherduck_token`).
 It passes `--full` on Sundays, and on demand with the `full` input.
-Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest`'s `version` (the end of the last stored `signals` or `metrics` run) to reach the run, then requests `/api/overview`, `/api/runs` and the `/api/bars/{slug}` of every featured instrument, so no visitor waits on a cache miss for the headline screens, and fails on any status but 200.
+Its `warm` job holds no secret: it waits up to 20 minutes for `/api/latest`'s `version` (the end of the last stored `signals` or `metrics` run) to reach the run, then requests `/api/overview`, `/api/runs`, `/api/signals`, `/api/stats` and the `/api/bars/{slug}` of every featured instrument and of every instrument with a signal on the newest day, so no visitor or tapped alert waits on a cache miss, and fails on any status but 200.
 `.github/workflows/universe.yml` runs `universe sync` at 06:00 UTC on the 1st of each month and commits `universe.csv` to `main` when it changed; its `keepalive` job enables the scheduled workflows again through the API, so GitHub's 60-day idle rule does not disable them.
 `.github/workflows/site.yml` builds `web/` and publishes it to GitHub Pages on a push to `main` that touches `web/`, with `VITE_API_URL` from the repository variable `API_URL`.
 `.github/workflows/api.yml` tests the Worker on every push touching `api/` and deploys it from `main` with the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `MOTHERDUCK_API_TOKEN` (the read-only service account's token, uploaded as the Worker secret `MOTHERDUCK_TOKEN`).
@@ -69,7 +69,7 @@ Compare a rules change before committing it by running `signals --dry-run` under
 
 `notify` sends the owner's phone, over [ntfy.sh](https://ntfy.sh) used anonymously, what the `signals` stage found in the last four days that no earlier message named:
 
-- A **push** for each signal graded A (at most ten a night, best first) with a chart of the timeframe's last 80 bars, the level dashed, the stop dotted and the signal bar marked. The title is the verdict (`NVDA weekly: first higher high (A)`), the message at most four lines: the close or swing and its margin, where it is proved wrong, the volume and the next timeframe up's trend, and the base rate beside the any-bar baseline. A tap opens the dashboard's Ticker view at the signal (the page ignores the parameters until M11); two buttons open the chart and that day's signals.
+- A **push** for each signal graded A (at most ten a night, best first) with a chart of the timeframe's last 80 bars, the level dashed, the stop dotted and the signal bar marked. The title is the verdict (`NVDA weekly: first higher high (A)`), the message at most four lines: the close or swing and its margin, where it is proved wrong, the volume and the next timeframe up's trend, and the base rate beside the any-bar baseline. A tap opens the dashboard's Ticker view at the signal; two buttons open the chart and that day's signals.
 - A **digest** for each asset class with a signal graded B or better, ranked, at most 12 lines, ending in a count of what it leaves to the Signals screen. A class whose signals were all pushed gets none. Grade C signals and failures are never sent.
 - A **health** message, only when the pipeline's state changes: `Market data: nightly partial` (or `failed`, `stale`) with the failing stages and a link to the Actions run, then `Market data: healthy again`. `status --alert` runs it at 09:47 UTC from `watch.yml`, so a night that never ran is reported too.
 
@@ -151,8 +151,12 @@ CLOUDFLARE_INCLUDE_PROCESS_ENV=true MOTHERDUCK_TOKEN="$(security find-generic-pa
 
 ## Develop
 
+The first `coverage report` fails below the whole package's floor in `pyproject.toml`, and the second below every branch of the pure core (`transform`, `operate`, `port`).
+
 ```bash
-uv run pytest
+uv run coverage run -m pytest
+uv run coverage report
+uv run coverage report --include "src/market_data/code/transform/*,src/market_data/code/operate/*,src/market_data/code/port/*" --fail-under 100
 uv run ruff check && uv run ruff format --check
 uv run pyright
 uv run pytest -m real   # one run against Yahoo itself
@@ -217,6 +221,7 @@ gh repo delete henrymckay/market-data-public --yes        # the repository, its 
 motherduck_token="$(security find-generic-password -a "$USER" -s motherduck-token -w)" \
   duckdb md: -c "drop database market_data"               # the stored data
 security delete-generic-password -a "$USER" -s motherduck-token   # the local copy of the token
+security delete-generic-password -a "$USER" -s ntfy-market-monitor   # the alert topic
 ```
 
 Then revoke the token in MotherDuck's settings (Settings, Access tokens), since the repository secret held a copy of it.
@@ -232,4 +237,6 @@ curl -X DELETE https://api.motherduck.com/v1/users/market_data_api \
 
 - Delete the Worker `market-data-api` and the KV namespace `market-data-api-cache` in the Cloudflare dashboard (Workers & Pages), or with `npx wrangler login` and `npx wrangler delete` in `api/`.
 - Revoke the Cloudflare API token under My Profile, API Tokens.
-The schedule is disabled by GitHub after 60 days without repository activity, so a forgotten copy stops itself.
+- Unsubscribe the ntfy app from the topic.
+
+`universe.yml`'s `keepalive` job re-enables the schedules every month, so a forgotten copy keeps running until the repository is deleted.

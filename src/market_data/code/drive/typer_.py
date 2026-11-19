@@ -318,20 +318,24 @@ def status(
     ] = False,
     log_level: typing.Annotated[Level, _log_level()] = Level.WARNING,
 ) -> None:
-    """Show the last runs' health; exit 1 when a run did not store or data is stale."""
+    """Show the last runs' health; exit 1 when one did not store, is stale or unsent."""
     settings = _start(log_level)
     topic = _topic(settings) if alert else ""
     with _connected(settings) as store:
         judged = transform.build_status(
             store.read_runs(), missing=store.read_missing(), now=_now()
         )
-        if alert:
-            planned = operate.plan_health(
-                now=_now, run_url=settings.run_url, store=store
+        results = (
+            _send_planned(
+                operate.plan_health(now=_now, run_url=settings.run_url, store=store),
+                store=store,
+                topic=topic,
             )
-            _send_planned(planned, store=store, topic=topic)
+            if alert
+            else ()
+        )
     output.display_status(judged)
-    if not judged.healthy:
+    if not judged.healthy or any(result.status == "failed" for result in results):
         raise typer.Exit(code=1)
 
 

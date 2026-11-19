@@ -45,9 +45,9 @@ def compute_signals(
 ) -> transform.Run:
     """Recompute everything `find_signals` returns, replace it and record the run.
 
-    A store failure while replacing is logged and recorded as a failed run, so the
-    stages after it still run over yesterday's tables; a store with no bars records
-    a failed run and replaces nothing.
+    A store failure while reading or replacing is logged and recorded as a failed
+    run, so the stages after it still run over yesterday's tables; a store with no
+    bars records a failed run and replaces nothing.
 
     :param bars: Every stored daily bar, read once for the whole night.
     :param now: The clock, returning an aware UTC time.
@@ -59,10 +59,10 @@ def compute_signals(
     rows = 0
     stored = False
     if not bars.is_empty():
-        computed = find_signals(
-            bars=bars, now=lambda: started, rules=rules, store=store
-        )
         try:
+            computed = find_signals(
+                bars=bars, now=lambda: started, rules=rules, store=store
+            )
             store.replace_signals(computed)
             rows, stored = computed.signals.height, True
         except error.StoreError as failure:

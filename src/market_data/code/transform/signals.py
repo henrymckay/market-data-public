@@ -254,7 +254,7 @@ def build_signals(
     found = _walk_groups(frame, rules)
     row_day = frame.get_column("day")
     row_known = frame.get_column("last_day")
-    pivots = polars.DataFrame(found.pivots, schema_overrides={"label": polars.String})
+    pivots = polars.DataFrame(found.pivots, schema=_FOUND_PIVOTS)
     pivots = pivots.with_columns(
         row_day.gather(pivots.get_column("bar")).alias("day"),
         row_day.gather(pivots.get_column("confirmed")).alias("confirmed"),

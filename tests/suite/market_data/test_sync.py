@@ -151,6 +151,19 @@ def test_when_diff_universe_then_added_and_removed_tickers_are_named(universe, m
     assert changes.removed == ("GONE",)
 
 
+@pytest.mark.parametrize("column", ["name", "sector"])
+def test_when_a_name_or_sector_is_missing_then_sync_members_fails(universe, column):
+    members = _members(symbols=[f"X{n:03d}" for n in range(500)]).with_columns(
+        polars.when(polars.col("symbol") == "X000")
+        .then(None)
+        .otherwise(polars.col(column))
+        .alias(column)
+    )
+
+    with pytest.raises(error.SourceError, match="lacks a name or a sector"):
+        transform.sync_members(universe, members)
+
+
 @pytest.mark.parametrize("text", ["x" * 101, "two\nlines", "bell\x07"])
 def test_when_a_name_is_odd_then_sync_members_fails(universe, text):
     members = _members(symbols=[f"X{n:03d}" for n in range(500)]).with_columns(

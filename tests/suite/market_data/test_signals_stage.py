@@ -64,6 +64,19 @@ def test_when_the_replace_fails_then_a_failed_run_is_recorded_and_nothing_raised
     assert "signals stage failed" in caplog.text
 
 
+def test_when_a_read_fails_then_a_failed_run_is_recorded_and_nothing_raised(
+    bars, ledger, rules, caplog
+):
+    ledger.failing_reads = True
+
+    run = operate.compute_signals(bars=bars, now=_clock(), rules=rules, store=ledger)
+
+    assert (run.outcome, run.rows) == (transform.Outcome.FAILED, 0)
+    assert ledger.replaced == []
+    assert ledger.runs == [run]
+    assert "signals stage failed" in caplog.text
+
+
 def test_when_signals_are_only_found_then_nothing_is_written(bars, ledger, rules):
     computed = operate.find_signals(bars=bars, now=_clock(), rules=rules, store=ledger)
 

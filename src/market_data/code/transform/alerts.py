@@ -459,14 +459,14 @@ def _digest_tail(*, folded: int, lower: int) -> str | None:
 
 def _digest_body(lines: list[str], *, lower: int) -> tuple[str, int]:
     """Return the digest's text and how many signal lines it folded away."""
-    for shown in range(len(lines), -1, -1):
+    for shown in range(len(lines), 0, -1):
         folded = len(lines) - shown
         tail = _digest_tail(folded=folded, lower=lower)
         kept = [*lines[:shown], *([tail] if tail else [])]
         text = "\n".join(kept)
         if len(kept) <= DIGEST_LINES and len(text.encode()) <= DIGEST_BYTES:
             return text, folded
-    return "", len(lines)
+    return _digest_tail(folded=len(lines), lower=lower) or "", len(lines)
 
 
 def compose_digest(rows: list[Row], *, lower: int, rules: rules_.Rules) -> Message:

@@ -192,6 +192,76 @@ def test_when_a_ticker_and_price_are_long_then_the_push_stays_within_its_bounds(
     assert len(push.message.encode()) <= 300
 
 
+def test_when_a_push_overflows_its_bounds_then_it_is_cut_to_them(packaged):
+    ticker = "X" * 40
+    overflowing = alerting.signal(
+        ticker, close=1.234567e40, level=1.23e40, stop=9.87e39, trend_swings=12
+    )
+
+    [push] = _plan(
+        packaged,
+        overflowing,
+        tickers=alerting.tickers_of((ticker, "index")),
+        structure=alerting.structure_of((ticker, "m", "up")),
+    )
+
+    assert push.title.endswith("...")
+    assert len(push.title.encode()) <= 60
+    assert len(push.message.splitlines()) < 3
+    assert len(push.message.encode()) <= 300
+
+
+def test_when_a_signal_has_no_volume_then_the_push_leaves_volume_out(packaged):
+    [push] = _plan(packaged, alerting.signal(volume_ratio=None))
+
+    assert (
+        push.message.splitlines()[1]
+        == "Invalid below 128.40 (-11.6%). Monthly trend up."
+    )
+
+
+def test_when_the_rules_send_a_failure_then_its_push_names_the_stop(packaged):
+    rules = packaged.model_copy(
+        update={
+            "alerts": packaged.alerts.model_copy(
+                update={"events": (*packaged.alerts.events, "fail_up")}
+            )
+        }
+    )
+
+    [push] = _plan(rules, alerting.signal(event="fail_up"))
+
+    assert push.title == "NVDA weekly: failed first higher high (A)"
+    assert push.message.splitlines()[0] == "Closed beyond the stop 142.10."
+
+
+@pytest.mark.parametrize(
+    ("value", "asset_class", "written"),
+    [
+        (1.08342, "fx", "1.0834"),
+        (154.1234, "fx", "154.123"),
+        (0.51234, "crypto", "0.5123"),
+        (98765.432, "stock", "98,765.43"),
+    ],
+)
+def test_when_a_price_is_formatted_then_its_places_follow_its_class(
+    value, asset_class, written
+):
+    assert transform.format_price(value, asset_class) == written
+
+
+def test_when_one_digest_line_is_longer_than_the_digest_then_it_folds_into_the_count(
+    packaged,
+):
+    ticker = "Y" * 1600
+    row = alerting.signal(ticker, grade="B", score=2)
+
+    [digest] = _plan(packaged, row, tickers=alerting.tickers_of((ticker, "stock")))
+
+    assert digest.message == "+1 more on the Signals screen"
+    assert digest.signals == (row["id"],)
+
+
 def test_when_more_signals_than_the_cap_are_due_then_the_rest_go_in_the_digest(
     packaged,
 ):

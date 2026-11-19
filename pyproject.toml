@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Nightly daily prices from Yahoo into MotherDuck, with a static dashboard."
 requires-python = ">=3.14"
 dependencies = [
+  "curl-cffi>=0.17.0",
   "duckdb>=1.5.6,<1.6",
   "lxml>=6.1.3",
   "matplotlib>=3.10",
@@ -24,7 +25,7 @@ dependencies = [
 market-data-cli = "market_data.code.drive.cli:app"
 
 [build-system]
-requires = ["uv_build>=0.11.29,<0.12.0"]
+requires = ["uv_build>=0.13.9,<0.14"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -74,6 +75,11 @@ markers = [
 pythonpath = ["tests"]
 testpaths = ["tests/suite"]
 xfail_strict = true
+
+[tool.coverage.report]
+exclude_also = ["typing.assert_never"]
+fail_under = 97
+show_missing = true
 
 [tool.coverage.run]
 branch = true
