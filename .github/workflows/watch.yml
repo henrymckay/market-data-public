@@ -2,7 +2,7 @@ name: watch
 # A night that never ran sends nothing of its own, so this run, a few hours
 # after the nightly's slot, reports it (PLAN.md, D93).
 on:
-  schedule:
+  schedule: # cron times are UTC
     - cron: "47 9 * * *"
   workflow_dispatch:
     inputs:
