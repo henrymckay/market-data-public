@@ -207,6 +207,30 @@ def test_when_status_alert_finds_a_new_failure_then_one_health_message_goes(
     assert _count(store, "alert_state") == 1
 
 
+def test_when_status_alert_cannot_send_the_recovery_then_it_exits_1(
+    runner, store, monkeypatch
+):
+    _fill(store)
+    connection = duckdb.connect(store)
+    connection.execute(
+        "insert into alert_state values (now(), 'yahoo partial', 'health', 'unhealthy')"
+    )
+    connection.close()
+    with ntfy_stub.Stub([500] * 20) as stub:
+        monkeypatch.setattr(
+            ntfy,
+            "read_constants",
+            lambda: ntfy.Constants(
+                base_url=stub.url, pause=0.0, retry_waits=(0.0,), timeout=2.0
+            ),
+        )
+        monkeypatch.setenv("NTFY_TOPIC", TOPIC)
+        result = runner.invoke(cli.app, ["status", "--alert"])
+
+    assert result.exit_code == 1
+    assert stub.seen != []
+
+
 def test_when_status_alert_has_no_topic_then_it_exits_2(runner, store):
     _fill(store)
 
