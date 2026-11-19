@@ -144,6 +144,7 @@ class SignalsLedger:
     periods: polars.DataFrame
     tickers: polars.DataFrame
     failing: bool = False
+    failing_reads: bool = False
     replaced: list[transform.Computed] = dataclasses.field(
         default_factory=list[transform.Computed]
     )
@@ -154,7 +155,9 @@ class SignalsLedger:
         self.runs.append(run)
 
     def read_period_bars(self) -> polars.DataFrame:
-        """Return the period bars."""
+        """Return the period bars, or fail as a store that cannot be read."""
+        if self.failing_reads:
+            raise error.StoreError("The store failed in read_period_bars")
         return self.periods
 
     def read_tickers(self) -> polars.DataFrame:
