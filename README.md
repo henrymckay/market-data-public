@@ -151,8 +151,12 @@ CLOUDFLARE_INCLUDE_PROCESS_ENV=true MOTHERDUCK_TOKEN="$(security find-generic-pa
 
 ## Develop
 
+The first `coverage report` fails below the whole package's floor in `pyproject.toml`, and the second below every branch of the pure core (`transform`, `operate`, `port`).
+
 ```bash
-uv run pytest
+uv run coverage run -m pytest
+uv run coverage report
+uv run coverage report --include "src/market_data/code/transform/*,src/market_data/code/operate/*,src/market_data/code/port/*" --fail-under 100
 uv run ruff check && uv run ruff format --check
 uv run pyright
 uv run pytest -m real   # one run against Yahoo itself

@@ -75,6 +75,11 @@ pythonpath = ["tests"]
 testpaths = ["tests/suite"]
 xfail_strict = true
 
+[tool.coverage.report]
+exclude_also = ["typing.assert_never"]
+fail_under = 97
+show_missing = true
+
 [tool.coverage.run]
 branch = true
 source = ["market_data"]
