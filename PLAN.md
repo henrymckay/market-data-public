@@ -542,7 +542,7 @@ Its states: loading is a skeleton per card; empty reads "No signals on 17 Nov 20
   `universe.yml` (M8): `0 6 1 * *` UTC and on dispatch; a `sync` job (`contents: write`) runs `universe sync` and commits and pushes `universe.csv` to `main` as `github-actions[bot]` when it changed; a `keepalive` job (`actions: write`) calls `gh workflow enable` on `nightly.yml`, `watch.yml` and `universe.yml` (D100).
   Secret: `NTFY_TOPIC`, set once by piping the generated topic into `gh secret set NTFY_TOPIC` with nothing printed; it needs no rotation unless leaked, and a new one means the owner subscribing again.
 - **Alert channel** — ntfy.sh's public server, used anonymously; read from `https://ntfy.sh/v1/account` on 2026-11-18: 250 messages a day per address, messages cached 12 hours, attachments up to 2 MB each and 20 MB in all, kept 3 hours; 4,096 bytes a message (docs.ntfy.sh, Publishing, read 2026-11-18).
-- **Teardown** — kept: a local clone of the repository, holding the plan, the three records and the history, since `gh repo delete` removes the remote; no data is archived, since every bar is fetched again from Yahoo in minutes (D2); removed by the README's Tear it down, each step run by the owner (Q2); left standing: the owner's GitHub, MotherDuck and Cloudflare accounts, which predate or outlive the project *(proposed)*.
+- **Teardown** — kept: a local clone of the repository, holding the plan, the three records and the history, since `gh repo delete` removes the remote; no data is archived, since every bar is fetched again from Yahoo in minutes (D2); removed by the README's Tear it down, each step run by the owner (Q2); left standing: the owner's GitHub, MotherDuck and Cloudflare accounts, which predate or outlive the project.
 
 ### Errors
 
